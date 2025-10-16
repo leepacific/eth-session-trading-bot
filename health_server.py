@@ -77,6 +77,15 @@ class HealthHandler(BaseHTTPRequestHandler):
             test_tool_html = self.get_test_tool_page()
             self.wfile.write(test_tool_html.encode())
         
+        elif self.path == '/debug':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            # 디버그 정보 반환
+            debug_info = self.get_debug_info()
+            self.wfile.write(json.dumps(debug_info, indent=2).encode())
+        
         else:
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
@@ -186,6 +195,43 @@ class HealthHandler(BaseHTTPRequestHandler):
 </body>
 </html>
             """
+    
+    def get_debug_info(self):
+        """디버그 정보 수집"""
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'server_info': {
+                'port': os.getenv('PORT', '8080'),
+                'railway_environment': os.getenv('RAILWAY_ENVIRONMENT', 'not_set'),
+                'custom_domain': os.getenv('CUSTOM_DOMAIN', 'not_set'),
+                'use_cloudflare': os.getenv('USE_CLOUDFLARE', 'not_set')
+            },
+            'environment_variables': {
+                'RAILWAY_ENVIRONMENT': os.getenv('RAILWAY_ENVIRONMENT'),
+                'PORT': os.getenv('PORT'),
+                'CUSTOM_DOMAIN': os.getenv('CUSTOM_DOMAIN'),
+                'USE_CLOUDFLARE': os.getenv('USE_CLOUDFLARE'),
+                'RAILWAY_PUBLIC_DOMAIN': os.getenv('RAILWAY_PUBLIC_DOMAIN'),
+                'BINANCE_API_KEY': 'set' if os.getenv('BINANCE_API_KEY') else 'not_set',
+                'CLOUDFLARE_API_TOKEN': 'set' if os.getenv('CLOUDFLARE_API_TOKEN') else 'not_set'
+            },
+            'available_endpoints': [
+                '/',
+                '/health',
+                '/status',
+                '/parameters', 
+                '/optimization',
+                '/test-binance',
+                '/test-tool',
+                '/debug'
+            ],
+            'troubleshooting': {
+                'railway_dashboard': 'https://railway.app/dashboard',
+                'check_custom_domain': 'Settings → Domains에서 커스텀 도메인 상태 확인',
+                'check_ssl': 'SSL 인증서가 Active 상태인지 확인',
+                'cloudflare_dns': 'Cloudflare DNS에서 CNAME 레코드 확인'
+            }
+        }
     
     def run_binance_test(self):
         """바이낸스 연결 테스트 실행"""
@@ -413,6 +459,12 @@ class HealthHandler(BaseHTTPRequestHandler):
                 <h3>🧪 API 테스트 도구</h3>
                 <p>종합 테스트 도구</p>
                 <a href="/test-tool">열기</a>
+            </div>
+            
+            <div class="endpoint">
+                <h3>🔧 디버그 정보</h3>
+                <p>환경변수 및 설정 확인</p>
+                <a href="/debug">확인하기</a>
             </div>
         </div>
         
