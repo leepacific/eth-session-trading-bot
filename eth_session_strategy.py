@@ -34,7 +34,8 @@ class ETHSessionStrategy:
             'time_stop_bars': 1,                     # 시간 스톱
             'target_r': 3.0721376531107074,          # 목표 R배수
             
-            # 추가 최적화 파라미터
+            # 추가 최적화 파라미터 (최신 최적값)
+            'funding_avoid_bars': 1,                     # 펀딩 회피 바
             'min_volatility_rank': 0.41615733983481445,  # 최소 변동성 순위
             'session_strength': 1.6815393680831972,      # 세션 강도
             'volume_filter': 1.2163453246372455,         # 볼륨 필터

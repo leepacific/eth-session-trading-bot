@@ -247,6 +247,13 @@
                 <button class="btn" onclick="testThroughput()">처리량 테스트</button>
             </div>
             
+            <!-- 파라미터 테스트 -->
+            <div class="test-section">
+                <h3>⚙️ 파라미터 테스트</h3>
+                <button class="btn" onclick="testParameters()">현재 파라미터 확인</button>
+                <button class="btn" onclick="testOptimization()">최적화 상태 확인</button>
+            </div>
+            
             <!-- 로딩 표시 -->
             <div class="loading" id="loading">
                 <div class="spinner"></div>
@@ -584,6 +591,65 @@
             addResult('처리량 결과', true, `${requestCount}개 요청, ${throughput} req/s`);
             
             hideLoading();
+        }
+
+        async function testParameters() {
+            const result = await makeRequest('/parameters');
+            
+            if (result.success && result.status === 200) {
+                const params = result.data;
+                
+                addResult('파라미터 조회', true, '현재 파라미터 조회 성공');
+                
+                if (params.parameters) {
+                    let paramText = '현재 최적 파라미터:\n';
+                    for (const [key, value] of Object.entries(params.parameters)) {
+                        paramText += `${key}: ${value}\n`;
+                    }
+                    addResult('파라미터 상세', true, paramText);
+                }
+                
+                if (params.parameter_source) {
+                    addResult('파라미터 출처', true, `출처: ${params.parameter_source}`);
+                }
+                
+                if (params.last_optimization_score) {
+                    addResult('최적화 점수', true, `점수: ${params.last_optimization_score}`);
+                }
+            } else {
+                addResult('파라미터 조회', false, `파라미터 조회 실패 (${result.status || result.error})`);
+            }
+        }
+
+        async function testOptimization() {
+            const result = await makeRequest('/optimization');
+            
+            if (result.success && result.status === 200) {
+                const optInfo = result.data;
+                
+                addResult('최적화 상태', true, '최적화 정보 조회 성공');
+                
+                if (optInfo.schedule) {
+                    addResult('최적화 스케줄', true, `스케줄: ${optInfo.schedule}`);
+                }
+                
+                if (optInfo.next_optimization) {
+                    const nextDate = new Date(optInfo.next_optimization);
+                    addResult('다음 최적화', true, `다음 실행: ${nextDate.toLocaleString()}`);
+                }
+                
+                if (optInfo.last_optimization) {
+                    const lastDate = new Date(optInfo.last_optimization);
+                    addResult('마지막 최적화', true, `마지막 실행: ${lastDate.toLocaleString()}`);
+                }
+                
+                if (optInfo.recent_results && optInfo.recent_results.length > 0) {
+                    const recentCount = optInfo.recent_results.length;
+                    addResult('최적화 히스토리', true, `최근 ${recentCount}개 결과 보유`);
+                }
+            } else {
+                addResult('최적화 상태', false, `최적화 정보 조회 실패 (${result.status || result.error})`);
+            }
         }
     </script>
 </body>

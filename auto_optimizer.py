@@ -444,12 +444,12 @@ if __name__ == "__main__":
         # 한국 시간대 설정
         kst = pytz.timezone('Asia/Seoul')
         
-        # 매주 일요일 18:00 KST에 실행
+        # 매주 일요일 14:00 KST에 실행
         scheduler.add_job(
             func=self.run_full_optimization,
             trigger=CronTrigger(
                 day_of_week='sun',  # 일요일
-                hour=18,            # 18시
+                hour=14,            # 14시
                 minute=0,           # 0분
                 timezone=kst
             ),
@@ -459,7 +459,7 @@ if __name__ == "__main__":
         )
         
         print("📅 스케줄러 설정 완료")
-        print("   실행 시간: 매주 일요일 18:00 KST")
+        print("   실행 시간: 매주 일요일 14:00 KST")
         
         # 다음 실행 시간 계산
         next_run = scheduler.get_job('weekly_optimization').next_run_time

@@ -19,12 +19,16 @@ from eth_session_strategy import ETHSessionStrategy
 # Cloudflare 통합 import
 from cloudflare_integration import CloudflareManager
 
+# 파라미터 관리 import
+from parameter_manager import ParameterManager
+
 class RailwayTradingBot:
     def __init__(self):
         """Railway 트레이딩 봇 초기화"""
         self.running = True
         self.strategy = None
         self.cloudflare = None
+        self.param_manager = ParameterManager()
         
         print("🚀 Railway 트레이딩 봇 초기화")
         print(f"   환경: {os.getenv('RAILWAY_ENVIRONMENT', 'development')}")
@@ -81,6 +85,9 @@ class RailwayTradingBot:
         
         while self.running:
             try:
+                # 새로운 최적화 결과 확인
+                self.param_manager.check_for_new_optimization_results()
+                
                 # 주기적으로 백테스트 실행 (예: 1시간마다)
                 self.run_backtest()
                 
