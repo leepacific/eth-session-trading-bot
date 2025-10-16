@@ -254,6 +254,15 @@
                 <button class="btn" onclick="testOptimization()">최적화 상태 확인</button>
             </div>
             
+            <!-- 바이낸스 연결 테스트 -->
+            <div class="test-section">
+                <h3>🔗 바이낸스 연결 테스트</h3>
+                <button class="btn btn-danger" onclick="testBinanceConnection()">바이낸스 연결 테스트</button>
+                <p style="margin-top: 10px; color: #7f8c8d; font-size: 0.9em;">
+                    ⚠️ 이 테스트는 실제 바이낸스 API에 연결합니다.
+                </p>
+            </div>
+            
             <!-- 로딩 표시 -->
             <div class="loading" id="loading">
                 <div class="spinner"></div>
@@ -650,6 +659,58 @@
             } else {
                 addResult('최적화 상태', false, `최적화 정보 조회 실패 (${result.status || result.error})`);
             }
+        }
+
+        async function testBinanceConnection() {
+            clearResults();
+            showLoading();
+            
+            addResult('바이낸스 테스트', true, '바이낸스 연결 테스트 시작...');
+            
+            const result = await makeRequest('/test-binance');
+            
+            if (result.success && result.status === 200) {
+                const testData = result.data;
+                
+                addResult('바이낸스 연결', true, '바이낸스 테스트 완료');
+                
+                if (testData.test_results) {
+                    const results = testData.test_results;
+                    
+                    // 각 테스트 결과 표시
+                    for (const [testName, passed] of Object.entries(results)) {
+                        const displayName = {
+                            'server_time': '서버 시간 동기화',
+                            'cloudflare': 'Cloudflare 프록시',
+                            'ip_restrictions': 'IP 제한/Rate Limiting',
+                            'account_info': '계정 정보 조회'
+                        }[testName] || testName;
+                        
+                        addResult(displayName, passed, passed ? '통과' : '실패');
+                    }
+                    
+                    // 전체 결과
+                    const successRate = testData.success_rate || 0;
+                    addResult('전체 결과', successRate >= 75, 
+                        `${testData.passed_tests}/${testData.total_tests} 통과 (${successRate.toFixed(1)}%)`);
+                    
+                    if (successRate >= 90) {
+                        addResult('연결 상태', true, '바이낸스 연결이 완벽하게 작동합니다');
+                    } else if (successRate >= 75) {
+                        addResult('연결 상태', true, '바이낸스 연결이 대부분 정상 작동합니다');
+                    } else {
+                        addResult('연결 상태', false, '바이낸스 연결에 문제가 있을 수 있습니다');
+                    }
+                }
+                
+                if (testData.note) {
+                    addResult('참고사항', true, testData.note);
+                }
+            } else {
+                addResult('바이낸스 테스트', false, `바이낸스 테스트 실패 (${result.status || result.error})`);
+            }
+            
+            hideLoading();
         }
     </script>
 </body>

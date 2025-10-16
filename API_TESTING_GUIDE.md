@@ -228,3 +228,89 @@ python api_test_suite.py https://your-api-url.com
 ```
 
 이제 API가 제대로 작동하는지 확인해보세요! 🚀
+##
+ 🔗 바이낸스 연결 테스트
+
+### 새로운 엔드포인트: `/test-binance`
+
+#### 테스트 항목:
+- ✅ **서버 시간 동기화**: 바이낸스 서버와 시간 차이 확인
+- 🌐 **Cloudflare 프록시**: IP 프록시 정상 작동 확인
+- 🛡️ **IP 제한/Rate Limiting**: API 사용량 제한 테스트
+- 👤 **계정 정보 조회**: API 키 유효성 및 권한 확인
+
+#### 사용 방법:
+```bash
+# 웹 브라우저
+https://api.your-domain.com/test-binance
+
+# 또는 curl
+curl https://api.your-domain.com/test-binance
+```
+
+#### 응답 예시:
+```json
+{
+  "timestamp": "2025-10-15T14:00:00Z",
+  "test_results": {
+    "server_time": true,
+    "cloudflare": true,
+    "ip_restrictions": true,
+    "account_info": true
+  },
+  "passed_tests": 4,
+  "total_tests": 4,
+  "success_rate": 100.0,
+  "status": "completed"
+}
+```
+
+### 단발성 주문 테스트
+
+#### 수동 실행 (Railway 환경):
+```bash
+# Railway 컨테이너에서 실행
+python run_binance_test.py
+
+# 또는 직접 테스트
+python binance_connection_test.py
+```
+
+#### 테스트 주문 특징:
+- **심볼**: ETHUSDT
+- **수량**: 0.001 ETH (최소 수량)
+- **가격**: 현재가 대비 -10% (체결되지 않음)
+- **타입**: LIMIT GTC 주문
+- **목적**: API 연결 및 IP 제한 테스트
+
+#### ⚠️ 주의사항:
+1. **실제 주문 전송**: 테스트넷이 아닌 실제 거래소
+2. **수동 취소 필요**: 바이낸스에서 직접 주문 취소
+3. **체결 방지**: 현재가에서 멀리 떨어진 가격 설정
+4. **최소 수량**: 0.001 ETH로 영향 최소화
+
+### 테스트 결과 해석
+
+#### 성공률 기준:
+- **100%**: 🎉 완벽한 연결 상태
+- **75-99%**: ✅ 양호한 연결 상태  
+- **50-74%**: ⚠️ 일부 문제 있음
+- **50% 미만**: ❌ 심각한 연결 문제
+
+#### 일반적인 문제들:
+
+**1. 서버 시간 동기화 실패**
+- 원인: 시스템 시간 차이
+- 해결: Railway 환경에서는 자동 동기화됨
+
+**2. Cloudflare 프록시 미감지**
+- 원인: DNS 설정 문제
+- 해결: Cloudflare DNS 프록시 활성화 확인
+
+**3. 계정 정보 조회 실패**
+- 원인: API 키 오류 또는 권한 부족
+- 해결: 바이낸스 API 키 재생성
+
+**4. IP 제한 테스트 실패**
+- 원인: Rate Limiting 미작동
+- 해결: 바이낸스 IP 제한 설정 확인

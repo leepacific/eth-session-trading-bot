@@ -58,9 +58,63 @@ class HealthHandler(BaseHTTPRequestHandler):
             
             self.wfile.write(json.dumps(optimization_info, indent=2).encode())
         
+        elif self.path == '/test-binance':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            # 바이낸스 연결 테스트 실행
+            test_result = self.run_binance_test()
+            
+            self.wfile.write(json.dumps(test_result, indent=2).encode())
+        
         else:
             self.send_response(404)
             self.end_headers()
+    
+    def run_binance_test(self):
+        """바이낸스 연결 테스트 실행"""
+        try:
+            from binance_connection_test import BinanceConnectionTester
+            
+            print("🧪 바이낸스 연결 테스트 시작...")
+            
+            tester = BinanceConnectionTester()
+            
+            # 기본 테스트만 실행 (주문 제외)
+            test_results = {}
+            
+            # 1. 서버 시간 테스트
+            test_results['server_time'] = tester.test_server_time()
+            
+            # 2. Cloudflare 통합 테스트
+            test_results['cloudflare'] = tester.test_cloudflare_integration()
+            
+            # 3. IP 제한 테스트
+            test_results['ip_restrictions'] = tester.test_ip_restrictions()
+            
+            # 4. 계정 정보 테스트
+            test_results['account_info'] = tester.test_account_info()
+            
+            passed_tests = sum(test_results.values())
+            total_tests = len(test_results)
+            
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'test_results': test_results,
+                'passed_tests': passed_tests,
+                'total_tests': total_tests,
+                'success_rate': passed_tests / total_tests * 100,
+                'status': 'completed',
+                'note': 'Order placement test excluded from API endpoint'
+            }
+            
+        except Exception as e:
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'error': f'Binance test failed: {str(e)}',
+                'status': 'failed'
+            }
     
     def get_current_parameters(self):
         """현재 최적 파라미터 조회"""
