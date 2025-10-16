@@ -1,2 +1,2 @@
-web: python eth_session_strategy.py
-worker: python eth_session_strategy.py
+web: python railway_bot.py
+worker: python railway_bot.py
