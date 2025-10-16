@@ -7,7 +7,14 @@ WORKDIR /app
 # 시스템 패키지 업데이트 및 필요한 패키지 설치
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
+    wget \
     && rm -rf /var/lib/apt/lists/*
+
+# Cloudflared 설치 (선택사항)
+RUN wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb \
+    && dpkg -i cloudflared-linux-amd64.deb \
+    && rm cloudflared-linux-amd64.deb
 
 # Python 의존성 설치
 COPY requirements.txt .

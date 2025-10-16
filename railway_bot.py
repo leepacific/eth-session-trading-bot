@@ -16,15 +16,23 @@ from health_server import start_health_server
 # 트레이딩 전략 import
 from eth_session_strategy import ETHSessionStrategy
 
+# Cloudflare 통합 import
+from cloudflare_integration import CloudflareManager
+
 class RailwayTradingBot:
     def __init__(self):
         """Railway 트레이딩 봇 초기화"""
         self.running = True
         self.strategy = None
+        self.cloudflare = None
         
         print("🚀 Railway 트레이딩 봇 초기화")
         print(f"   환경: {os.getenv('RAILWAY_ENVIRONMENT', 'development')}")
         print(f"   시작 시간: {datetime.now()}")
+        
+        # Cloudflare 통합 초기화
+        if os.getenv('USE_CLOUDFLARE', 'false').lower() == 'true':
+            self.cloudflare = CloudflareManager()
         
         # 신호 핸들러 설정
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -89,6 +97,11 @@ class RailwayTradingBot:
     def start(self):
         """봇 시작"""
         try:
+            # Cloudflare 설정 (Railway 환경에서만)
+            if self.cloudflare and os.getenv('RAILWAY_ENVIRONMENT'):
+                print("🌐 Cloudflare 설정 중...")
+                self.cloudflare.full_setup()
+            
             # 헬스체크 서버를 별도 스레드에서 시작
             health_thread = threading.Thread(target=start_health_server, daemon=True)
             health_thread.start()
