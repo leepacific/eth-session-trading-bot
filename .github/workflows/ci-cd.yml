@@ -1,0 +1,97 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov flake8 black
+    
+    - name: Code formatting check
+      run: |
+        black --check --diff .
+    
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Test imports and basic functionality
+      run: |
+        python -c "import advanced_risk_system; print('✅ Advanced risk system import OK')"
+        python -c "import fixed_risk_management; print('✅ Fixed risk management import OK')"
+        python -c "import binance_data_collector; print('✅ Data collector import OK')"
+    
+    - name: Run risk system tests
+      run: |
+        python advanced_risk_system.py
+    
+    - name: Security check for sensitive files
+      run: |
+        if [ -f .env ]; then
+          echo "❌ .env file found in repository!"
+          exit 1
+        else
+          echo "✅ No .env file in repository"
+        fi
+    
+    - name: Check for API keys in code
+      run: |
+        if grep -r "sk-" . --exclude-dir=.git --exclude="*.yml" --exclude="*.yaml"; then
+          echo "❌ Potential API key found in code!"
+          exit 1
+        else
+          echo "✅ No API keys found in code"
+        fi
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to Railway
+      uses: railway-app/railway-action@v1
+      with:
+        railway-token: ${{ secrets.RAILWAY_TOKEN }}
+        railway-service: ${{ secrets.RAILWAY_SERVICE }}
+      env:
+        BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+        BINANCE_SECRET_KEY: ${{ secrets.BINANCE_SECRET_KEY }}
+        BINANCE_TESTNET: ${{ secrets.BINANCE_TESTNET }}
+        DATA_SYMBOL: ${{ secrets.DATA_SYMBOL }}
+        DATA_INTERVAL: ${{ secrets.DATA_INTERVAL }}
+        DATA_POINTS_TARGET: ${{ secrets.DATA_POINTS_TARGET }}
+        INITIAL_BALANCE: ${{ secrets.INITIAL_BALANCE }}
+        MAX_ACCOUNT_RISK_PER_TRADE: ${{ secrets.MAX_ACCOUNT_RISK_PER_TRADE }}
+        LIQUIDATION_PROBABILITY: ${{ secrets.LIQUIDATION_PROBABILITY }}
+        MAX_LEVERAGE: ${{ secrets.MAX_LEVERAGE }}
