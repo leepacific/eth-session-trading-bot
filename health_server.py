@@ -68,9 +68,124 @@ class HealthHandler(BaseHTTPRequestHandler):
             
             self.wfile.write(json.dumps(test_result, indent=2).encode())
         
+        elif self.path == '/test-tool':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            
+            # API 테스트 도구 페이지 반환
+            test_tool_html = self.get_test_tool_page()
+            self.wfile.write(test_tool_html.encode())
+        
         else:
             self.send_response(404)
+            self.send_header('Content-type', 'application/json')
             self.end_headers()
+            
+            error_response = {
+                'error': 'Not Found',
+                'message': f'The requested path {self.path} was not found',
+                'available_endpoints': [
+                    '/',
+                    '/health',
+                    '/status', 
+                    '/parameters',
+                    '/optimization',
+                    '/test-binance',
+                    '/test-tool'
+                ],
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            self.wfile.write(json.dumps(error_response, indent=2).encode())
+    
+    def get_test_tool_page(self):
+        """API 테스트 도구 페이지 반환"""
+        try:
+            # web_test_tool.html 파일 읽기
+            with open('web_test_tool.html', 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            
+            # 현재 도메인으로 API URL 자동 설정
+            current_domain = os.getenv('CUSTOM_DOMAIN', 'localhost:8080')
+            if not current_domain.startswith('http'):
+                current_domain = f'https://{current_domain}'
+            
+            # API URL 자동 설정
+            html_content = html_content.replace(
+                'value="https://api.eth-trading-bot.com"',
+                f'value="{current_domain}"'
+            )
+            
+            return html_content
+            
+        except FileNotFoundError:
+            # 파일이 없으면 간단한 테스트 페이지 반환
+            return """
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 API 테스트 도구</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+        .btn { background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #2980b9; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d5f4e6; border-left: 4px solid #27ae60; }
+        .error { background: #fadbd8; border-left: 4px solid #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 API 테스트 도구</h1>
+        <p>트레이딩 봇 API 상태 및 기능 테스트</p>
+        
+        <div style="margin: 20px 0;">
+            <button class="btn" onclick="testEndpoint('/health')">헬스체크</button>
+            <button class="btn" onclick="testEndpoint('/status')">상태 확인</button>
+            <button class="btn" onclick="testEndpoint('/parameters')">파라미터</button>
+            <button class="btn" onclick="testEndpoint('/optimization')">최적화 상태</button>
+            <button class="btn" onclick="testEndpoint('/test-binance')">바이낸스 테스트</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+    
+    <script>
+        async function testEndpoint(endpoint) {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                const response = await fetch(endpoint);
+                const data = await response.json();
+                
+                const resultDiv = document.createElement('div');
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+                resultDiv.innerHTML = `
+                    <strong>${endpoint}</strong> (${response.status})<br>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                resultsDiv.appendChild(resultDiv);
+                
+            } catch (error) {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <strong>${endpoint}</strong> - 오류<br>
+                    ${error.message}
+                `;
+                
+                resultsDiv.appendChild(resultDiv);
+            }
+        }
+    </script>
+</body>
+</html>
+            """
     
     def run_binance_test(self):
         """바이낸스 연결 테스트 실행"""
@@ -115,6 +230,212 @@ class HealthHandler(BaseHTTPRequestHandler):
                 'error': f'Binance test failed: {str(e)}',
                 'status': 'failed'
             }
+    
+    def get_welcome_page(self):
+        """웰컴 페이지 HTML 생성"""
+        return """
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 ETH Session Trading Bot API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .header {
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            color: #7f8c8d;
+        }
+        
+        .status {
+            background: #d5f4e6;
+            border: 2px solid #27ae60;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .status h2 {
+            color: #27ae60;
+            margin-bottom: 10px;
+        }
+        
+        .endpoints {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .endpoint {
+            background: #f8f9fa;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.2s;
+        }
+        
+        .endpoint:hover {
+            transform: translateY(-5px);
+            border-color: #3498db;
+        }
+        
+        .endpoint h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .endpoint p {
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+        
+        .endpoint a {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .endpoint a:hover {
+            background: #2980b9;
+        }
+        
+        .info {
+            background: #fef9e7;
+            border: 2px solid #f39c12;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .info h3 {
+            color: #f39c12;
+            margin-bottom: 10px;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+            color: #7f8c8d;
+        }
+        
+        .timestamp {
+            font-size: 0.9em;
+            color: #95a5a6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 ETH Session Trading Bot</h1>
+            <p>고급 리스크 관리가 적용된 ETHUSDT 세션 스윕 리버설 트레이딩 봇</p>
+        </div>
+        
+        <div class="status">
+            <h2>✅ 시스템 정상 작동 중</h2>
+            <p>자동 최적화 시스템이 매주 일요일 14:00 KST에 실행됩니다</p>
+        </div>
+        
+        <div class="endpoints">
+            <div class="endpoint">
+                <h3>🏥 헬스체크</h3>
+                <p>시스템 상태 확인</p>
+                <a href="/health">확인하기</a>
+            </div>
+            
+            <div class="endpoint">
+                <h3>📊 상태 정보</h3>
+                <p>봇 실행 상태 조회</p>
+                <a href="/status">확인하기</a>
+            </div>
+            
+            <div class="endpoint">
+                <h3>⚙️ 파라미터</h3>
+                <p>현재 최적 파라미터</p>
+                <a href="/parameters">확인하기</a>
+            </div>
+            
+            <div class="endpoint">
+                <h3>🤖 최적화 상태</h3>
+                <p>자동 최적화 정보</p>
+                <a href="/optimization">확인하기</a>
+            </div>
+            
+            <div class="endpoint">
+                <h3>🔗 바이낸스 테스트</h3>
+                <p>연결 및 IP 제한 테스트</p>
+                <a href="/test-binance">테스트하기</a>
+            </div>
+            
+            <div class="endpoint">
+                <h3>🧪 API 테스트 도구</h3>
+                <p>종합 테스트 도구</p>
+                <a href="/test-tool">열기</a>
+            </div>
+        </div>
+        
+        <div class="info">
+            <h3>📋 주요 기능</h3>
+            <ul style="text-align: left; max-width: 600px; margin: 0 auto;">
+                <li><strong>세션 스윕 리버설</strong>: 아시아/런던/뉴욕 세션 분석</li>
+                <li><strong>고급 리스크 관리</strong>: 포지션당 5% 리스크, 청산 확률 7%</li>
+                <li><strong>자동 최적화</strong>: 매주 파라미터 자동 업데이트</li>
+                <li><strong>Cloudflare 보안</strong>: DDoS 보호 및 고정 IP</li>
+                <li><strong>실시간 모니터링</strong>: API 엔드포인트를 통한 상태 확인</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p><strong>ETH Session Trading Bot API v1.0</strong></p>
+            <p>Powered by Railway + Cloudflare</p>
+            <p class="timestamp">현재 시간: """ + datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC') + """</p>
+        </div>
+    </div>
+</body>
+</html>
+        """
     
     def get_current_parameters(self):
         """현재 최적 파라미터 조회"""
