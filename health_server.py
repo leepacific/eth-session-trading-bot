@@ -86,6 +86,15 @@ class HealthHandler(BaseHTTPRequestHandler):
             debug_info = self.get_debug_info()
             self.wfile.write(json.dumps(debug_info, indent=2).encode())
         
+        elif self.path == '/' or self.path == '':
+            # 루트 경로 - 웰컴 페이지 반환
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            
+            welcome_page = self.get_welcome_page()
+            self.wfile.write(welcome_page.encode())
+        
         else:
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
