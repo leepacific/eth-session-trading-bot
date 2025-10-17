@@ -86,6 +86,15 @@ class HealthHandler(BaseHTTPRequestHandler):
             debug_info = self.get_debug_info()
             self.wfile.write(json.dumps(debug_info, indent=2).encode())
         
+        elif self.path == '/debug-binance':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            # 바이낸스 연결 상세 디버깅
+            debug_result = self.run_binance_debug()
+            self.wfile.write(json.dumps(debug_result, indent=2).encode())
+        
         elif self.path == '/' or self.path == '':
             # 루트 경로 - 웰컴 페이지 반환
             self.send_response(200)
@@ -263,6 +272,163 @@ class HealthHandler(BaseHTTPRequestHandler):
             return {
                 'timestamp': datetime.now().isoformat(),
                 'error': f'Binance test failed: {str(e)}',
+                'status': 'failed'
+            }
+    
+    def run_binance_debug(self):
+        """바이낸스 연결 상세 디버깅"""
+        try:
+            import requests
+            import hmac
+            import hashlib
+            import time
+            from urllib.parse import urlencode
+            
+            debug_results = {
+                'timestamp': datetime.now().isoformat(),
+                'tests': {}
+            }
+            
+            # 1. 기본 네트워크 연결 테스트
+            network_tests = {}
+            test_urls = [
+                "https://api.binance.com/api/v3/ping",
+                "https://api.binance.com/api/v3/time",
+                "https://httpbin.org/ip"
+            ]
+            
+            for url in test_urls:
+                try:
+                    response = requests.get(url, timeout=10)
+                    network_tests[url] = {
+                        'status_code': response.status_code,
+                        'success': response.status_code == 200,
+                        'response_time': response.elapsed.total_seconds()
+                    }
+                    
+                    if 'httpbin.org/ip' in url and response.status_code == 200:
+                        ip_info = response.json()
+                        network_tests[url]['current_ip'] = ip_info.get('origin', 'Unknown')
+                        
+                except Exception as e:
+                    network_tests[url] = {'error': str(e), 'success': False}
+            
+            debug_results['tests']['network'] = network_tests
+            
+            # 2. API 키 검증
+            api_key = os.getenv('BINANCE_API_KEY')
+            secret_key = os.getenv('BINANCE_SECRET_KEY')
+            
+            api_key_test = {
+                'api_key_exists': bool(api_key),
+                'secret_key_exists': bool(secret_key),
+                'api_key_length': len(api_key) if api_key else 0,
+                'secret_key_length': len(secret_key) if secret_key else 0,
+                'api_key_format_ok': False,
+                'secret_key_format_ok': False
+            }
+            
+            if api_key:
+                api_key_test['api_key_format_ok'] = len(api_key) == 64 and ' ' not in api_key
+                api_key_test['api_key_preview'] = api_key[:8] + '...' if len(api_key) >= 8 else 'too_short'
+            
+            if secret_key:
+                api_key_test['secret_key_format_ok'] = len(secret_key) == 64 and ' ' not in secret_key
+                api_key_test['secret_key_preview'] = secret_key[:8] + '...' if len(secret_key) >= 8 else 'too_short'
+            
+            debug_results['tests']['api_keys'] = api_key_test
+            
+            # 3. 인증된 요청 테스트
+            auth_test = {'success': False, 'error': 'No API keys'}
+            
+            if api_key and secret_key:
+                try:
+                    timestamp = int(time.time() * 1000)
+                    params = {'timestamp': timestamp}
+                    
+                    query_string = urlencode(params)
+                    signature = hmac.new(
+                        secret_key.encode('utf-8'),
+                        query_string.encode('utf-8'),
+                        hashlib.sha256
+                    ).hexdigest()
+                    
+                    params['signature'] = signature
+                    headers = {'X-MBX-APIKEY': api_key}
+                    
+                    response = requests.get(
+                        "https://api.binance.com/api/v3/account",
+                        params=params,
+                        headers=headers,
+                        timeout=15
+                    )
+                    
+                    auth_test = {
+                        'status_code': response.status_code,
+                        'success': response.status_code == 200,
+                        'timestamp_used': timestamp,
+                        'signature_preview': signature[:16] + '...'
+                    }
+                    
+                    if response.status_code == 200:
+                        account_info = response.json()
+                        auth_test['account_type'] = account_info.get('accountType', 'Unknown')
+                        auth_test['can_trade'] = account_info.get('canTrade', False)
+                        auth_test['permissions'] = account_info.get('permissions', [])
+                    else:
+                        try:
+                            error_data = response.json()
+                            auth_test['error_code'] = error_data.get('code', 'Unknown')
+                            auth_test['error_message'] = error_data.get('msg', 'Unknown')
+                        except:
+                            auth_test['error_message'] = response.text[:200]
+                    
+                except Exception as e:
+                    auth_test = {'success': False, 'error': str(e)}
+            
+            debug_results['tests']['authentication'] = auth_test
+            
+            # 4. 결과 요약
+            network_success = sum(1 for test in network_tests.values() if test.get('success', False))
+            network_total = len(network_tests)
+            
+            debug_results['summary'] = {
+                'network_success_rate': f"{network_success}/{network_total}",
+                'api_keys_configured': api_key_test['api_key_exists'] and api_key_test['secret_key_exists'],
+                'api_keys_format_ok': api_key_test['api_key_format_ok'] and api_key_test['secret_key_format_ok'],
+                'authentication_success': auth_test.get('success', False),
+                'overall_status': 'success' if auth_test.get('success', False) else 'failed'
+            }
+            
+            # 문제 해결 제안
+            suggestions = []
+            
+            if not api_key_test['api_key_exists']:
+                suggestions.append("BINANCE_API_KEY 환경변수를 설정하세요")
+            
+            if not api_key_test['secret_key_exists']:
+                suggestions.append("BINANCE_SECRET_KEY 환경변수를 설정하세요")
+            
+            if not api_key_test['api_key_format_ok']:
+                suggestions.append("API 키 형식을 확인하세요 (64자, 공백 없음)")
+            
+            if not api_key_test['secret_key_format_ok']:
+                suggestions.append("Secret 키 형식을 확인하세요 (64자, 공백 없음)")
+            
+            if auth_test.get('error_code') == -2015:
+                suggestions.append("바이낸스 API 관리에서 현재 IP를 허용 목록에 추가하세요")
+            
+            if auth_test.get('error_code') == -1022:
+                suggestions.append("API 키와 Secret 키가 올바른 쌍인지 확인하세요")
+            
+            debug_results['suggestions'] = suggestions
+            
+            return debug_results
+            
+        except Exception as e:
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'error': f'Debug failed: {str(e)}',
                 'status': 'failed'
             }
     
