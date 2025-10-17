@@ -54,9 +54,26 @@ temp/
 *.png
 *.jpg
 *.jpeg
-*.csv
-*.json
 *.pkl
+
+# 임시 테스트 및 결과 파일들
+*_result_*.json
+*_test_*.json
+*_check_*.json
+*_monitor_*.json
+binance_test_*.json
+railway_*_*.json
+update_params_*.py
+fix_*.py
+debug_*.py
+temp_*.py
+
+# 최적화 결과 (최신 것만 유지)
+optimization_result_*.json
+!optimization_result_latest.json
+
+# 파라미터 히스토리
+parameters_history.json
 
 # 데이터 파일 (용량이 큰 경우)
 data/*.csv

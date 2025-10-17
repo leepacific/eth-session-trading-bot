@@ -15,6 +15,10 @@ import hmac
 import hashlib
 from datetime import datetime
 from urllib.parse import urlencode
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 class BinanceConnectionTester:
     def __init__(self):

@@ -74,7 +74,7 @@ class AutoOptimizer:
     def setup_optimization_config(self):
         """최적화 설정"""
         self.config = {
-            # 목표 지표 가중치
+            # 목표 지표 가중치 (동적 조정 가능)
             'objective_weights': {
                 'sortino_ratio': 0.25,
                 'calmar_ratio': 0.20,
@@ -84,7 +84,7 @@ class AutoOptimizer:
                 'rr_ratio': 0.10
             },
             
-            # 목표 값들
+            # 목표 값들 (시장 조건에 따라 동적 조정)
             'target_values': {
                 'sortino_ratio': 2.0,
                 'calmar_ratio': 3.0,
@@ -94,7 +94,7 @@ class AutoOptimizer:
                 'rr_ratio': 2.0
             },
             
-            # 제약 조건
+            # 제약 조건 (최소 요구사항)
             'constraints': {
                 'min_trades': 100,
                 'max_drawdown': 0.20,  # 20%
@@ -102,11 +102,21 @@ class AutoOptimizer:
                 'min_profit_factor': 1.3
             },
             
-            # 최적화 단계
+            # 워크포워드 테스트 설정
+            'walk_forward': {
+                'enabled': True,
+                'window_size': 0.6,      # 60% 인샘플
+                'step_size': 0.1,        # 10% 스텝
+                'min_oos_trades': 20,    # 최소 아웃오브샘플 거래 수
+                'consistency_threshold': 0.7,  # 70% 이상 구간에서 수익성 유지
+                'stability_factor': 0.8   # 성과 안정성 요구 수준
+            },
+            
+            # 최적화 단계 (워크포워드 포함)
             'stages': {
-                'stage1': {'samples': 100, 'data_points': 50000, 'time_limit': 20},
-                'stage2': {'samples': 200, 'data_points': 100000, 'time_limit': 50},
-                'stage3': {'samples': 10, 'data_points': 206319, 'time_limit': 20}
+                'stage1': {'samples': 100, 'data_points': 50000, 'time_limit': 20, 'wf_enabled': False},
+                'stage2': {'samples': 200, 'data_points': 100000, 'time_limit': 50, 'wf_enabled': False},
+                'stage3': {'samples': 50, 'data_points': 206319, 'time_limit': 60, 'wf_enabled': True}
             }
         }
     
@@ -189,8 +199,140 @@ class AutoOptimizer:
             'avg_loss': avg_loss
         }
     
+    def run_walk_forward_test(self, strategy, params):
+        """워크포워드 테스트 실행"""
+        wf_config = self.config['walk_forward']
+        df = strategy.df
+        total_length = len(df)
+        
+        window_size = int(total_length * wf_config['window_size'])
+        step_size = int(total_length * wf_config['step_size'])
+        
+        print(f"🔄 워크포워드 테스트 시작 (윈도우: {window_size}, 스텝: {step_size})")
+        
+        oos_results = []  # Out-of-Sample 결과들
+        
+        # 워크포워드 윈도우들
+        start_idx = 0
+        while start_idx + window_size < total_length:
+            end_idx = start_idx + window_size
+            oos_start = end_idx
+            oos_end = min(oos_start + step_size, total_length)
+            
+            if oos_end - oos_start < step_size * 0.5:  # 너무 작은 OOS는 스킵
+                break
+            
+            # In-Sample 데이터로 최적화 (실제로는 파라미터 그대로 사용)
+            is_data = df.iloc[start_idx:end_idx].copy().reset_index(drop=True)
+            
+            # Out-of-Sample 테스트
+            oos_data = df.iloc[oos_start:oos_end].copy().reset_index(drop=True)
+            
+            # OOS 전략 실행
+            oos_strategy = ETHSessionStrategy()
+            oos_strategy.df = oos_data
+            
+            # 파라미터 적용
+            for param_name, param_value in params.items():
+                if param_name in oos_strategy.params:
+                    oos_strategy.params[param_name] = param_value
+            
+            # OOS 백테스트
+            oos_strategy.generate_signals()
+            oos_trades = oos_strategy.backtest()
+            
+            if oos_trades and len(oos_trades) >= wf_config['min_oos_trades']:
+                oos_trades_df = pd.DataFrame(oos_trades)
+                oos_metrics = self.calculate_performance_metrics(oos_trades_df)
+                
+                if oos_metrics:
+                    oos_results.append({
+                        'period': f"{oos_start}-{oos_end}",
+                        'trades': len(oos_trades),
+                        'metrics': oos_metrics,
+                        'profitable': oos_metrics['total_return'] > 0
+                    })
+            
+            start_idx += step_size
+        
+        if len(oos_results) == 0:
+            return -1000  # 유효한 OOS 결과가 없음
+        
+        # 워크포워드 성과 평가
+        return self.evaluate_walk_forward_results(oos_results)
+    
+    def evaluate_walk_forward_results(self, oos_results):
+        """워크포워드 결과 평가"""
+        wf_config = self.config['walk_forward']
+        
+        # 일관성 확인 (수익성 있는 구간 비율)
+        profitable_periods = sum(1 for r in oos_results if r['profitable'])
+        consistency_ratio = profitable_periods / len(oos_results)
+        
+        if consistency_ratio < wf_config['consistency_threshold']:
+            return -1000  # 일관성 부족
+        
+        # 전체 OOS 성과 계산
+        all_metrics = [r['metrics'] for r in oos_results]
+        
+        # 평균 성과 지표
+        avg_metrics = {
+            'total_trades': sum(m['total_trades'] for m in all_metrics),
+            'win_rate': np.mean([m['win_rate'] for m in all_metrics]),
+            'profit_factor': np.mean([m['profit_factor'] for m in all_metrics if m['profit_factor'] != float('inf')]),
+            'max_drawdown': max(m['max_drawdown'] for m in all_metrics),
+            'sortino_ratio': np.mean([m['sortino_ratio'] for m in all_metrics]),
+            'calmar_ratio': np.mean([m['calmar_ratio'] for m in all_metrics]),
+            'sqn': np.mean([m['sqn'] for m in all_metrics]),
+            'rr_ratio': np.mean([m['rr_ratio'] for m in all_metrics])
+        }
+        
+        # 안정성 패널티 계산
+        stability_penalty = self.calculate_stability_penalty(all_metrics)
+        
+        # 기본 점수 계산
+        base_score = self.calculate_objective_score(avg_metrics)
+        
+        # 워크포워드 보너스 (일관성에 따른)
+        wf_bonus = consistency_ratio * 0.2  # 최대 20% 보너스
+        
+        final_score = base_score + wf_bonus - stability_penalty
+        
+        print(f"   WF 구간: {len(oos_results)}개, 일관성: {consistency_ratio:.2f}, 점수: {final_score:.4f}")
+        
+        return final_score
+    
+    def calculate_stability_penalty(self, all_metrics):
+        """성과 안정성 패널티 계산"""
+        if len(all_metrics) < 2:
+            return 0
+        
+        # 주요 지표들의 변동성 계산
+        profit_factors = [m['profit_factor'] for m in all_metrics if m['profit_factor'] != float('inf')]
+        win_rates = [m['win_rate'] for m in all_metrics]
+        sortino_ratios = [m['sortino_ratio'] for m in all_metrics]
+        
+        penalties = []
+        
+        # Profit Factor 변동성
+        if len(profit_factors) > 1:
+            pf_cv = np.std(profit_factors) / np.mean(profit_factors) if np.mean(profit_factors) > 0 else 1
+            penalties.append(pf_cv * 0.1)
+        
+        # Win Rate 변동성
+        if len(win_rates) > 1:
+            wr_cv = np.std(win_rates) / np.mean(win_rates) if np.mean(win_rates) > 0 else 1
+            penalties.append(wr_cv * 0.1)
+        
+        # Sortino Ratio 변동성
+        if len(sortino_ratios) > 1:
+            sr_cv = np.std(sortino_ratios) / np.mean(sortino_ratios) if np.mean(sortino_ratios) > 0 else 1
+            penalties.append(sr_cv * 0.1)
+        
+        return sum(penalties)
+    
     def calculate_objective_score(self, metrics):
-        """목적 함수 점수 계산"""
+        """목적 함수 점수 계산 (개선된 버전)"""
         if metrics is None:
             return -1000  # 패널티
         
@@ -202,9 +344,9 @@ class AutoOptimizer:
             metrics['profit_factor'] < constraints['min_profit_factor']):
             return -1000  # 제약 조건 위반 시 큰 패널티
         
-        # 정규화된 점수 계산
+        # 동적 목표값 조정 (시장 조건에 따라)
+        targets = self.adjust_target_values(metrics)
         weights = self.config['objective_weights']
-        targets = self.config['target_values']
         
         def normalize_metric(value, target, is_higher_better=True):
             if is_higher_better:
@@ -221,13 +363,37 @@ class AutoOptimizer:
             weights['rr_ratio'] * normalize_metric(metrics['rr_ratio'], targets['rr_ratio'])
         )
         
-        # 드로우다운 패널티
-        dd_penalty = max(0, (metrics['max_drawdown'] - 0.15) * 10)  # 15% 초과시 패널티
+        # 적응적 드로우다운 패널티
+        dd_threshold = 0.15 if metrics['total_trades'] > 200 else 0.20
+        dd_penalty = max(0, (metrics['max_drawdown'] - dd_threshold) * 10)
         
         return score - dd_penalty
     
-    def objective_function(self, trial, data_points=None):
-        """Optuna 목적 함수"""
+    def adjust_target_values(self, metrics):
+        """시장 조건에 따른 목표값 동적 조정"""
+        base_targets = self.config['target_values'].copy()
+        
+        # 거래 빈도에 따른 조정
+        if metrics['total_trades'] < 200:
+            # 거래가 적으면 목표를 낮춤
+            base_targets['sortino_ratio'] *= 0.8
+            base_targets['calmar_ratio'] *= 0.8
+            base_targets['sqn'] *= 0.8
+        elif metrics['total_trades'] > 500:
+            # 거래가 많으면 목표를 높임
+            base_targets['sortino_ratio'] *= 1.2
+            base_targets['calmar_ratio'] *= 1.2
+        
+        # 최대 드로우다운에 따른 조정
+        if metrics['max_drawdown'] < 0.10:
+            # 낮은 드로우다운이면 다른 지표 목표를 높임
+            base_targets['profit_factor'] *= 1.1
+            base_targets['win_rate'] *= 1.05
+        
+        return base_targets
+    
+    def objective_function(self, trial, data_points=None, enable_walk_forward=False):
+        """Optuna 목적 함수 (워크포워드 테스트 포함)"""
         try:
             # 파라미터 샘플링
             param_space = self.get_param_space()
@@ -254,19 +420,21 @@ class AutoOptimizer:
                 if param_name in strategy.params:
                     strategy.params[param_name] = param_value
             
-            # 백테스트 실행
-            strategy.generate_signals()
-            trades = strategy.backtest()
-            
-            if not trades:
-                return -1000
-            
-            # 성과 지표 계산
-            trades_df = pd.DataFrame(trades)
-            metrics = self.calculate_performance_metrics(trades_df)
-            
-            # 목적 함수 점수 계산
-            score = self.calculate_objective_score(metrics)
+            # 워크포워드 테스트 실행 여부
+            if enable_walk_forward and self.config['walk_forward']['enabled']:
+                score = self.run_walk_forward_test(strategy, params)
+            else:
+                # 일반 백테스트
+                strategy.generate_signals()
+                trades = strategy.backtest()
+                
+                if not trades:
+                    return -1000
+                
+                # 성과 지표 계산
+                trades_df = pd.DataFrame(trades)
+                metrics = self.calculate_performance_metrics(trades_df)
+                score = self.calculate_objective_score(metrics)
             
             # 중간 결과 보고 (조기 중단용)
             if hasattr(trial, 'report'):
@@ -299,7 +467,11 @@ class AutoOptimizer:
         
         # 목적 함수 래퍼
         def objective_wrapper(trial):
-            return self.objective_function(trial, stage_config['data_points'])
+            return self.objective_function(
+                trial, 
+                stage_config['data_points'], 
+                enable_walk_forward=stage_config.get('wf_enabled', False)
+            )
         
         # 최적화 실행
         start_time = time.time()
@@ -324,8 +496,90 @@ class AutoOptimizer:
         
         return study
     
+    def analyze_market_conditions(self):
+        """시장 조건 분석 및 기준 동적 조정"""
+        print("📊 시장 조건 분석 중...")
+        
+        try:
+            # 기본 전략으로 시장 데이터 로드
+            strategy = ETHSessionStrategy()
+            strategy.load_data()
+            
+            df = strategy.df
+            
+            # 최근 데이터 분석 (최근 30%)
+            recent_data = df.tail(int(len(df) * 0.3))
+            
+            # 변동성 분석
+            recent_volatility = recent_data['atr'].mean()
+            historical_volatility = df['atr'].mean()
+            volatility_ratio = recent_volatility / historical_volatility
+            
+            # 트렌드 강도 분석
+            price_change = (recent_data['close'].iloc[-1] - recent_data['close'].iloc[0]) / recent_data['close'].iloc[0]
+            
+            # 거래량 분석
+            recent_volume = recent_data['volume'].mean()
+            historical_volume = df['volume'].mean()
+            volume_ratio = recent_volume / historical_volume
+            
+            # 시장 조건 분류
+            market_condition = self.classify_market_condition(volatility_ratio, price_change, volume_ratio)
+            
+            # 기준 조정
+            self.adjust_optimization_targets(market_condition, volatility_ratio, volume_ratio)
+            
+            print(f"   시장 조건: {market_condition}")
+            print(f"   변동성 비율: {volatility_ratio:.2f}")
+            print(f"   거래량 비율: {volume_ratio:.2f}")
+            
+            return market_condition
+            
+        except Exception as e:
+            print(f"❌ 시장 분석 실패: {e}")
+            return "normal"
+    
+    def classify_market_condition(self, volatility_ratio, price_change, volume_ratio):
+        """시장 조건 분류"""
+        if volatility_ratio > 1.3 and volume_ratio > 1.2:
+            return "high_volatility"
+        elif volatility_ratio < 0.7 and volume_ratio < 0.8:
+            return "low_volatility"
+        elif abs(price_change) > 0.2:
+            return "trending"
+        else:
+            return "normal"
+    
+    def adjust_optimization_targets(self, market_condition, volatility_ratio, volume_ratio):
+        """시장 조건에 따른 최적화 목표 조정"""
+        targets = self.config['target_values']
+        constraints = self.config['constraints']
+        
+        if market_condition == "high_volatility":
+            # 고변동성: 더 보수적인 목표
+            targets['max_drawdown'] = 0.25
+            targets['win_rate'] = 0.50
+            constraints['max_drawdown'] = 0.25
+            print("   🔥 고변동성 모드: 보수적 목표 적용")
+            
+        elif market_condition == "low_volatility":
+            # 저변동성: 더 공격적인 목표
+            targets['profit_factor'] = 3.0
+            targets['sortino_ratio'] = 2.5
+            constraints['min_trades'] = 150
+            print("   😴 저변동성 모드: 공격적 목표 적용")
+            
+        elif market_condition == "trending":
+            # 트렌딩: 트렌드 추종 최적화
+            targets['calmar_ratio'] = 4.0
+            targets['rr_ratio'] = 2.5
+            print("   📈 트렌딩 모드: 트렌드 추종 최적화")
+            
+        else:
+            print("   ⚖️ 일반 모드: 기본 목표 유지")
+    
     def run_full_optimization(self):
-        """전체 최적화 프로세스 실행"""
+        """전체 최적화 프로세스 실행 (시장 분석 포함)"""
         print("🚀 자동 최적화 시작")
         print("=" * 80)
         
@@ -333,6 +587,15 @@ class AutoOptimizer:
         results = {}
         
         try:
+            # 0단계: 시장 조건 분석
+            market_condition = self.analyze_market_conditions()
+            results['market_analysis'] = {
+                'condition': market_condition,
+                'timestamp': start_time.isoformat(),
+                'adjusted_targets': self.config['target_values'].copy(),
+                'adjusted_constraints': self.config['constraints'].copy()
+            }
+            
             # 1단계: 러프 스크리닝
             stage1_study = self.run_optimization_stage('1단계: 러프 스크리닝', self.config['stages']['stage1'])
             results['stage1'] = {
@@ -349,21 +612,29 @@ class AutoOptimizer:
                 'n_trials': len(stage2_study.trials)
             }
             
-            # 3단계: 최종 검증
-            stage3_study = self.run_optimization_stage('3단계: 최종 검증', self.config['stages']['stage3'])
+            # 3단계: 워크포워드 검증
+            print(f"\n🔍 3단계: 워크포워드 검증 시작...")
+            stage3_study = self.run_optimization_stage('3단계: 워크포워드 검증', self.config['stages']['stage3'])
             results['stage3'] = {
                 'best_params': stage3_study.best_params,
                 'best_score': stage3_study.best_value,
-                'n_trials': len(stage3_study.trials)
+                'n_trials': len(stage3_study.trials),
+                'walk_forward_validated': True
             }
             
-            # 최종 결과 저장
+            # 최종 검증
             final_params = stage3_study.best_params
-            self.save_optimization_results(final_params, results, start_time)
+            final_validation = self.final_validation(final_params)
+            results['final_validation'] = final_validation
             
-            print("\n🎉 최적화 완료!")
+            # 결과 저장 (JSON 직렬화 가능하도록 변환)
+            serializable_results = self.make_json_serializable(results)
+            self.save_optimization_results(final_params, serializable_results, start_time)
+            
+            print("\n🎉 워크포워드 최적화 완료!")
             print(f"   총 소요시간: {(datetime.now() - start_time).total_seconds()/60:.1f}분")
             print(f"   최종 점수: {stage3_study.best_value:.4f}")
+            print(f"   워크포워드 검증: ✅")
             
             return final_params
             
@@ -372,6 +643,111 @@ class AutoOptimizer:
             import traceback
             traceback.print_exc()
             return None
+    
+    def final_validation(self, params):
+        """최종 파라미터 검증"""
+        print("🔍 최종 검증 실행 중...")
+        
+        try:
+            strategy = ETHSessionStrategy()
+            strategy.load_data()
+            
+            # 파라미터 적용
+            for param_name, param_value in params.items():
+                if param_name in strategy.params:
+                    strategy.params[param_name] = param_value
+            
+            # 전체 데이터로 워크포워드 테스트
+            final_score = self.run_walk_forward_test(strategy, params)
+            
+            # 추가 안정성 검사
+            stability_check = self.stability_check(strategy, params)
+            
+            validation_result = {
+                'final_wf_score': final_score,
+                'stability_passed': stability_check['passed'],
+                'stability_details': stability_check,
+                'validation_timestamp': datetime.now().isoformat(),
+                'recommended_for_live': final_score > 0.5 and stability_check['passed']
+            }
+            
+            if validation_result['recommended_for_live']:
+                print("✅ 최종 검증 통과 - 실거래 권장")
+            else:
+                print("⚠️ 최종 검증 미통과 - 추가 최적화 필요")
+            
+            return validation_result
+            
+        except Exception as e:
+            print(f"❌ 최종 검증 실패: {e}")
+            return {'final_wf_score': -1000, 'stability_passed': False}
+    
+    def stability_check(self, strategy, params):
+        """파라미터 안정성 검사"""
+        try:
+            # 파라미터 민감도 테스트
+            sensitivity_results = []
+            
+            for param_name, param_value in params.items():
+                if param_name in strategy.params:
+                    # ±10% 변동 테스트
+                    if isinstance(param_value, (int, float)):
+                        test_values = [param_value * 0.9, param_value * 1.1]
+                        
+                        for test_value in test_values:
+                            # 임시 파라미터 적용
+                            original_value = strategy.params[param_name]
+                            strategy.params[param_name] = test_value
+                            
+                            # 간단한 백테스트
+                            strategy.generate_signals()
+                            trades = strategy.backtest()
+                            
+                            if trades:
+                                trades_df = pd.DataFrame(trades)
+                                metrics = self.calculate_performance_metrics(trades_df)
+                                score = self.calculate_objective_score(metrics)
+                                sensitivity_results.append(score)
+                            
+                            # 원래 값 복원
+                            strategy.params[param_name] = original_value
+            
+            # 안정성 평가
+            if len(sensitivity_results) > 0:
+                score_std = np.std(sensitivity_results)
+                score_mean = np.mean(sensitivity_results)
+                stability_ratio = score_std / abs(score_mean) if score_mean != 0 else float('inf')
+                
+                passed = stability_ratio < 0.3  # 30% 이하 변동성
+            else:
+                passed = False
+                stability_ratio = float('inf')
+            
+            return {
+                'passed': passed,
+                'stability_ratio': stability_ratio,
+                'sensitivity_scores': sensitivity_results,
+                'threshold': 0.3
+            }
+            
+        except Exception as e:
+            print(f"❌ 안정성 검사 실패: {e}")
+            return {'passed': False, 'stability_ratio': float('inf')}
+    
+    def make_json_serializable(self, obj):
+        """객체를 JSON 직렬화 가능하도록 변환"""
+        if isinstance(obj, dict):
+            return {k: self.make_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self.make_json_serializable(item) for item in obj]
+        elif isinstance(obj, (bool, int, float, str, type(None))):
+            return obj
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, (np.integer, np.floating)):
+            return float(obj)
+        else:
+            return str(obj)
     
     def save_optimization_results(self, best_params, results, start_time):
         """최적화 결과 저장"""

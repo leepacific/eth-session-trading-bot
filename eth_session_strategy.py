@@ -20,26 +20,26 @@ class ETHSessionStrategy:
         self.data_file = data_file or "data/ETHUSDT_15m_206319points_20251015_202539.csv"
         self.initial_balance = initial_balance
         
-        # 전략 파라미터 (최적화된 값)
+        # 전략 파라미터 (워크포워드 테스트 통과 최적값 - 2025.10.17)
         self.params = {
-            # 기본 설정
-            'swing_len': 5,                          # 스윙 고저 인식 길이
-            'rr_percentile': 0.2956456168878421,     # 변동성 필터
-            'disp_mult': 1.1007752243798252,         # 디스플레이스먼트 배수
-            'sweep_wick_mult': 0.5391008387578328,   # 스윕 꼬리 비율
-            'atr_len': 32,                           # ATR 계산 길이
+            # 기본 설정 (워크포워드 검증됨)
+            'swing_len': 3,                          # 스윙 고저 인식 길이
+            'rr_percentile': 0.1278554501836069,     # 변동성 필터
+            'disp_mult': 1.3107139215624644,         # 디스플레이스먼트 배수
+            'sweep_wick_mult': 0.6490576952390765,   # 스윕 꼬리 비율
+            'atr_len': 41,                           # ATR 계산 길이
             
-            # 리스크 관리
-            'stop_atr_mult': 0.07468310011731281,    # 스톱 ATR 배수
-            'time_stop_bars': 1,                     # 시간 스톱
-            'target_r': 3.0721376531107074,          # 목표 R배수
+            # 리스크 관리 (워크포워드 검증됨)
+            'stop_atr_mult': 0.0549414233732278,     # 스톱 ATR 배수
+            'time_stop_bars': 8,                     # 시간 스톱
+            'target_r': 2.862429365474845,           # 목표 R배수
             
-            # 추가 최적화 파라미터 (최신 최적값)
+            # 추가 최적화 파라미터 (워크포워드 검증됨)
             'funding_avoid_bars': 1,                     # 펀딩 회피 바
-            'min_volatility_rank': 0.41615733983481445,  # 최소 변동성 순위
-            'session_strength': 1.6815393680831972,      # 세션 강도
-            'volume_filter': 1.2163453246372455,         # 볼륨 필터
-            'trend_filter_len': 32,                      # 트렌드 필터 길이
+            'min_volatility_rank': 0.3052228633363352,   # 최소 변동성 순위
+            'session_strength': 1.9322268126535338,      # 세션 강도
+            'volume_filter': 1.8994566274211397,         # 볼륨 필터
+            'trend_filter_len': 13,                      # 트렌드 필터 길이
             
             # 세션 시간 (UTC 기준, 15분봉에 맞춰 조정)
             'asia_start': 0,             # 00:00 UTC

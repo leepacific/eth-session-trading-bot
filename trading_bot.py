@@ -14,6 +14,10 @@ from binance.exceptions import BinanceAPIException
 import warnings
 warnings.filterwarnings('ignore')
 
+# .env 파일 로드
+from dotenv import load_dotenv
+load_dotenv()
+
 # 로컬 모듈 import
 from eth_session_strategy import ETHSessionStrategy
 from advanced_risk_system import AdvancedRiskManager, RiskParameters

@@ -18,21 +18,21 @@ class ParameterManager:
         self.current_params_file = "current_parameters.json"
         self.params_history_file = "parameters_history.json"
         
-        # 기본 최적 파라미터 (현재 최고 성능)
+        # 워크포워드 테스트 통과 최적 파라미터 (2025.10.17 검증됨)
         self.default_optimal_params = {
-            'swing_len': 5,
-            'rr_percentile': 0.2956456168878421,
-            'disp_mult': 1.1007752243798252,
-            'sweep_wick_mult': 0.5391008387578328,
-            'atr_len': 32,
-            'stop_atr_mult': 0.07468310011731281,
-            'target_r': 3.0721376531107074,
-            'time_stop_bars': 1,
+            'swing_len': 3,
+            'rr_percentile': 0.1278554501836069,
+            'disp_mult': 1.3107139215624644,
+            'sweep_wick_mult': 0.6490576952390765,
+            'atr_len': 41,
+            'stop_atr_mult': 0.0549414233732278,
+            'target_r': 2.862429365474845,
+            'time_stop_bars': 8,
             'funding_avoid_bars': 1,
-            'min_volatility_rank': 0.41615733983481445,
-            'session_strength': 1.6815393680831972,
-            'volume_filter': 1.2163453246372455,
-            'trend_filter_len': 32
+            'min_volatility_rank': 0.3052228633363352,
+            'session_strength': 1.9322268126535338,
+            'volume_filter': 1.8994566274211397,
+            'trend_filter_len': 13
         }
         
         print("📊 파라미터 관리 시스템 초기화")
