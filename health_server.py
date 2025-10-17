@@ -601,7 +601,7 @@ class HealthHandler(BaseHTTPRequestHandler):
             
             # 2. 테스트 주문 파라미터 (체결되지 않을 가격으로 설정)
             test_price = current_price * 0.85  # 현재가보다 15% 낮은 가격
-            quantity = "0.001"  # 최소 수량
+            quantity = "0.006"  # 최소 주문 금액 20 USDT를 만족하는 수량
             
             params = {
                 'symbol': symbol,
