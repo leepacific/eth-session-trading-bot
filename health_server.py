@@ -610,6 +610,7 @@ class HealthHandler(BaseHTTPRequestHandler):
                 'timeInForce': 'GTC',
                 'quantity': quantity,
                 'price': f"{test_price:.2f}",
+                'positionSide': 'LONG',  # 선물 거래에서 포지션 사이드 명시
                 'timestamp': int(time.time() * 1000)
             }
             
