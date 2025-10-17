@@ -95,6 +95,15 @@ class HealthHandler(BaseHTTPRequestHandler):
             debug_result = self.run_binance_debug()
             self.wfile.write(json.dumps(debug_result, indent=2).encode())
         
+        elif self.path == '/check-ip':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            # IP 확인 (직접 vs 프록시)
+            ip_check_result = self.check_outgoing_ip()
+            self.wfile.write(json.dumps(ip_check_result, indent=2).encode())
+        
         elif self.path == '/' or self.path == '':
             # 루트 경로 - 웰컴 페이지 반환
             self.send_response(200)
@@ -526,6 +535,105 @@ class HealthHandler(BaseHTTPRequestHandler):
                 'timestamp': datetime.now().isoformat(),
                 'error': f'Debug failed: {str(e)}',
                 'status': 'failed'
+            }
+    
+    def check_outgoing_ip(self):
+        """송신 IP 확인 (직접 vs 프록시)"""
+        import requests
+        
+        result = {
+            'timestamp': datetime.now().isoformat(),
+            'direct_connection': {},
+            'proxy_connection': {},
+            'comparison': {}
+        }
+        
+        # 1. 직접 연결로 IP 확인
+        try:
+            response = requests.get("https://httpbin.org/ip", timeout=10)
+            if response.status_code == 200:
+                ip_data = response.json()
+                result['direct_connection'] = {
+                    'success': True,
+                    'ip': ip_data.get('origin', 'unknown'),
+                    'response_time': response.elapsed.total_seconds()
+                }
+            else:
+                result['direct_connection'] = {
+                    'success': False,
+                    'error': f'HTTP {response.status_code}'
+                }
+        except Exception as e:
+            result['direct_connection'] = {
+                'success': False,
+                'error': str(e)
+            }
+        
+        # 2. 프록시를 통한 IP 확인
+        proxy_url = os.getenv('BINANCE_PROXY_URL')
+        use_proxy = os.getenv('USE_CLOUDFLARE_PROXY', 'false').lower() == 'true'
+        
+        if use_proxy and proxy_url:
+            try:
+                # Cloudflare Tunnel을 통해 httpbin에 접근
+                # 이를 위해 터널 설정에 httpbin 경로를 추가해야 함
+                
+                # 대신 바이낸스 API를 통해 간접적으로 확인
+                response = requests.get(f"{proxy_url}/api/v3/time", timeout=10)
+                if response.status_code == 200:
+                    result['proxy_connection'] = {
+                        'success': True,
+                        'proxy_url': proxy_url,
+                        'response_time': response.elapsed.total_seconds(),
+                        'headers': dict(response.headers),
+                        'note': 'Proxy connection successful, but IP not directly visible'
+                    }
+                else:
+                    result['proxy_connection'] = {
+                        'success': False,
+                        'error': f'HTTP {response.status_code}',
+                        'proxy_url': proxy_url
+                    }
+            except Exception as e:
+                result['proxy_connection'] = {
+                    'success': False,
+                    'error': str(e),
+                    'proxy_url': proxy_url
+                }
+        else:
+            result['proxy_connection'] = {
+                'success': False,
+                'error': 'Proxy not configured',
+                'use_proxy': use_proxy,
+                'proxy_url': proxy_url
+            }
+        
+        # 3. 비교 분석
+        direct_ip = result['direct_connection'].get('ip', 'unknown')
+        proxy_success = result['proxy_connection'].get('success', False)
+        
+        result['comparison'] = {
+            'direct_ip': direct_ip,
+            'proxy_configured': use_proxy,
+            'proxy_working': proxy_success,
+            'recommendation': self._get_ip_recommendation(direct_ip, proxy_success)
+        }
+        
+        return result
+    
+    def _get_ip_recommendation(self, direct_ip, proxy_working):
+        """IP 설정 권장사항"""
+        if proxy_working:
+            return {
+                'status': 'use_proxy',
+                'message': 'Cloudflare 프록시가 작동 중입니다. 바이낸스에서 Cloudflare IP 범위를 허용하세요.',
+                'action': 'Add Cloudflare IP ranges to Binance whitelist'
+            }
+        else:
+            return {
+                'status': 'use_direct_ip',
+                'message': f'프록시가 작동하지 않습니다. 바이낸스에서 직접 IP를 허용하세요: {direct_ip}',
+                'action': f'Add {direct_ip} to Binance whitelist'
             }
     
     def get_welcome_page(self):
