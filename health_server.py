@@ -104,6 +104,15 @@ class HealthHandler(BaseHTTPRequestHandler):
             ip_check_result = self.check_outgoing_ip()
             self.wfile.write(json.dumps(ip_check_result, indent=2).encode())
         
+        elif self.path == '/test-order':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            # 실제 바이낸스 주문 테스트
+            order_test_result = self.test_binance_order()
+            self.wfile.write(json.dumps(order_test_result, indent=2).encode())
+        
         elif self.path == '/' or self.path == '':
             # 루트 경로 - 웰컴 페이지 반환
             self.send_response(200)
@@ -553,6 +562,130 @@ class HealthHandler(BaseHTTPRequestHandler):
                 'status': 'use_direct_ip',
                 'message': f'프록시가 작동하지 않습니다. 바이낸스에서 직접 IP를 허용하세요: {direct_ip}',
                 'action': f'Add {direct_ip} to Binance whitelist'
+            }
+    
+    def test_binance_order(self):
+        """실제 바이낸스 주문 테스트 (최소 수량)"""
+        try:
+            import requests
+            import hmac
+            import hashlib
+            import time
+            from urllib.parse import urlencode
+            
+            api_key = os.getenv('BINANCE_API_KEY')
+            secret_key = os.getenv('BINANCE_SECRET_KEY')
+            
+            if not (api_key and secret_key):
+                return {
+                    'timestamp': datetime.now().isoformat(),
+                    'status': 'failed',
+                    'error': 'API keys not configured'
+                }
+            
+            base_url = "https://fapi.binance.com"
+            symbol = "ETHUSDT"
+            
+            # 1. 현재 가격 조회
+            price_response = requests.get(f"{base_url}/fapi/v1/ticker/price", 
+                                        params={'symbol': symbol}, timeout=10)
+            
+            if price_response.status_code != 200:
+                return {
+                    'timestamp': datetime.now().isoformat(),
+                    'status': 'failed',
+                    'error': 'Failed to get current price'
+                }
+            
+            current_price = float(price_response.json()['price'])
+            
+            # 2. 테스트 주문 파라미터 (체결되지 않을 가격으로 설정)
+            test_price = current_price * 0.85  # 현재가보다 15% 낮은 가격
+            quantity = "0.001"  # 최소 수량
+            
+            params = {
+                'symbol': symbol,
+                'side': 'BUY',
+                'type': 'LIMIT',
+                'timeInForce': 'GTC',
+                'quantity': quantity,
+                'price': f"{test_price:.2f}",
+                'timestamp': int(time.time() * 1000)
+            }
+            
+            # 3. 서명 생성
+            query_string = urlencode(params)
+            signature = hmac.new(
+                secret_key.encode('utf-8'),
+                query_string.encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
+            
+            params['signature'] = signature
+            
+            headers = {
+                'X-MBX-APIKEY': api_key,
+                'Content-Type': 'application/json'
+            }
+            
+            # 4. 주문 전송
+            order_response = requests.post(
+                f"{base_url}/fapi/v1/order",
+                params=params,
+                headers=headers,
+                timeout=15
+            )
+            
+            result = {
+                'timestamp': datetime.now().isoformat(),
+                'test_parameters': {
+                    'symbol': symbol,
+                    'side': 'BUY',
+                    'quantity': quantity,
+                    'current_price': current_price,
+                    'test_price': test_price,
+                    'price_difference': f"{((current_price - test_price) / current_price * 100):.1f}%"
+                },
+                'order_response': {
+                    'status_code': order_response.status_code,
+                    'success': order_response.status_code == 200
+                }
+            }
+            
+            if order_response.status_code == 200:
+                order_data = order_response.json()
+                result['order_info'] = {
+                    'orderId': order_data.get('orderId'),
+                    'clientOrderId': order_data.get('clientOrderId'),
+                    'status': order_data.get('status'),
+                    'symbol': order_data.get('symbol'),
+                    'side': order_data.get('side'),
+                    'quantity': order_data.get('origQty'),
+                    'price': order_data.get('price')
+                }
+                result['status'] = 'success'
+                result['message'] = '테스트 주문이 성공적으로 전송되었습니다. 바이낸스에서 수동으로 취소해주세요.'
+                
+            else:
+                try:
+                    error_data = order_response.json()
+                    result['error'] = {
+                        'code': error_data.get('code'),
+                        'message': error_data.get('msg')
+                    }
+                except:
+                    result['error'] = {
+                        'message': order_response.text
+                    }
+                result['status'] = 'failed'
+            
+            return result
+            
+        except Exception as e:
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'status': 'failed',
+                'error': f'Exception occurred: {str(e)}'
             }
     
     def get_welcome_page(self):
