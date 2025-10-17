@@ -213,7 +213,9 @@ class HealthHandler(BaseHTTPRequestHandler):
                 'RAILWAY_ENVIRONMENT': os.getenv('RAILWAY_ENVIRONMENT'),
                 'PORT': os.getenv('PORT'),
                 'RAILWAY_PUBLIC_DOMAIN': os.getenv('RAILWAY_PUBLIC_DOMAIN'),
-                'BINANCE_API_KEY': 'set' if os.getenv('BINANCE_API_KEY') else 'not_set'
+                'BINANCE_API_KEY': 'set' if os.getenv('BINANCE_API_KEY') else 'not_set',
+                'BINANCE_PROXY_URL': os.getenv('BINANCE_PROXY_URL', 'not_set'),
+                'USE_CLOUDFLARE_PROXY': os.getenv('USE_CLOUDFLARE_PROXY', 'not_set')
             },
             'available_endpoints': [
                 '/',
