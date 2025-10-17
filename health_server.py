@@ -122,20 +122,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         try:
             # web_test_tool.html 파일 읽기
             with open('web_test_tool.html', 'r', encoding='utf-8') as f:
-                html_content = f.read()
-            
-            # 현재 도메인으로 API URL 자동 설정
-            current_domain = os.getenv('CUSTOM_DOMAIN', 'localhost:8080')
-            if not current_domain.startswith('http'):
-                current_domain = f'https://{current_domain}'
-            
-            # API URL 자동 설정
-            html_content = html_content.replace(
-                'value="https://api.eth-trading-bot.com"',
-                f'value="{current_domain}"'
-            )
-            
-            return html_content
+                return f.read()
             
         except FileNotFoundError:
             # 파일이 없으면 간단한 테스트 페이지 반환
@@ -211,18 +198,13 @@ class HealthHandler(BaseHTTPRequestHandler):
             'timestamp': datetime.now().isoformat(),
             'server_info': {
                 'port': os.getenv('PORT', '8080'),
-                'railway_environment': os.getenv('RAILWAY_ENVIRONMENT', 'not_set'),
-                'custom_domain': os.getenv('CUSTOM_DOMAIN', 'not_set'),
-                'use_cloudflare': os.getenv('USE_CLOUDFLARE', 'not_set')
+                'railway_environment': os.getenv('RAILWAY_ENVIRONMENT', 'not_set')
             },
             'environment_variables': {
                 'RAILWAY_ENVIRONMENT': os.getenv('RAILWAY_ENVIRONMENT'),
                 'PORT': os.getenv('PORT'),
-                'CUSTOM_DOMAIN': os.getenv('CUSTOM_DOMAIN'),
-                'USE_CLOUDFLARE': os.getenv('USE_CLOUDFLARE'),
                 'RAILWAY_PUBLIC_DOMAIN': os.getenv('RAILWAY_PUBLIC_DOMAIN'),
-                'BINANCE_API_KEY': 'set' if os.getenv('BINANCE_API_KEY') else 'not_set',
-                'CLOUDFLARE_API_TOKEN': 'set' if os.getenv('CLOUDFLARE_API_TOKEN') else 'not_set'
+                'BINANCE_API_KEY': 'set' if os.getenv('BINANCE_API_KEY') else 'not_set'
             },
             'available_endpoints': [
                 '/',
@@ -234,11 +216,9 @@ class HealthHandler(BaseHTTPRequestHandler):
                 '/test-tool',
                 '/debug'
             ],
-            'troubleshooting': {
-                'railway_dashboard': 'https://railway.app/dashboard',
-                'check_custom_domain': 'Settings → Domains에서 커스텀 도메인 상태 확인',
-                'check_ssl': 'SSL 인증서가 Active 상태인지 확인',
-                'cloudflare_dns': 'Cloudflare DNS에서 CNAME 레코드 확인'
+            'railway_info': {
+                'dashboard': 'https://railway.app/dashboard',
+                'current_domain': os.getenv('RAILWAY_PUBLIC_DOMAIN', 'eth-trading-bot-production.up.railway.app')
             }
         }
     
@@ -483,14 +463,13 @@ class HealthHandler(BaseHTTPRequestHandler):
                 <li><strong>세션 스윕 리버설</strong>: 아시아/런던/뉴욕 세션 분석</li>
                 <li><strong>고급 리스크 관리</strong>: 포지션당 5% 리스크, 청산 확률 7%</li>
                 <li><strong>자동 최적화</strong>: 매주 파라미터 자동 업데이트</li>
-                <li><strong>Cloudflare 보안</strong>: DDoS 보호 및 고정 IP</li>
                 <li><strong>실시간 모니터링</strong>: API 엔드포인트를 통한 상태 확인</li>
             </ul>
         </div>
         
         <div class="footer">
             <p><strong>ETH Session Trading Bot API v1.0</strong></p>
-            <p>Powered by Railway + Cloudflare</p>
+            <p>Powered by Railway</p>
             <p class="timestamp">현재 시간: """ + datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC') + """</p>
         </div>
     </div>
