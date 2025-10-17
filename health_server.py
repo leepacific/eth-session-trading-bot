@@ -113,6 +113,15 @@ class HealthHandler(BaseHTTPRequestHandler):
             order_test_result = self.test_binance_order()
             self.wfile.write(json.dumps(order_test_result, indent=2).encode())
         
+        elif self.path == '/trading-demo':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            # 실제 거래 시스템 데모
+            demo_result = self.run_trading_demo()
+            self.wfile.write(json.dumps(demo_result, indent=2).encode())
+        
         elif self.path == '/' or self.path == '':
             # 루트 경로 - 웰컴 페이지 반환
             self.send_response(200)
@@ -687,6 +696,190 @@ class HealthHandler(BaseHTTPRequestHandler):
                 'timestamp': datetime.now().isoformat(),
                 'status': 'failed',
                 'error': f'Exception occurred: {str(e)}'
+            }
+    
+    def run_trading_demo(self):
+        """실제 거래 시스템 데모"""
+        try:
+            import requests
+            import hmac
+            import hashlib
+            import time
+            from urllib.parse import urlencode
+            
+            api_key = os.getenv('BINANCE_API_KEY')
+            secret_key = os.getenv('BINANCE_SECRET_KEY')
+            base_url = "https://fapi.binance.com"
+            symbol = "ETHUSDT"
+            
+            demo_result = {
+                'timestamp': datetime.now().isoformat(),
+                'demo_steps': {}
+            }
+            
+            # 1. 현재 가격 확인
+            price_response = requests.get(f"{base_url}/fapi/v1/ticker/price", 
+                                        params={'symbol': symbol}, timeout=10)
+            
+            if price_response.status_code == 200:
+                current_price = float(price_response.json()['price'])
+                
+                # 24시간 통계
+                stats_response = requests.get(f"{base_url}/fapi/v1/ticker/24hr", 
+                                            params={'symbol': symbol}, timeout=10)
+                
+                price_info = {
+                    'current_price': current_price,
+                    'success': True
+                }
+                
+                if stats_response.status_code == 200:
+                    stats = stats_response.json()
+                    price_info.update({
+                        'change_24h': float(stats['priceChangePercent']),
+                        'volume_24h': float(stats['volume']),
+                        'high_24h': float(stats['highPrice']),
+                        'low_24h': float(stats['lowPrice'])
+                    })
+                
+                demo_result['demo_steps']['1_price_check'] = price_info
+            else:
+                demo_result['demo_steps']['1_price_check'] = {
+                    'success': False,
+                    'error': 'Failed to get price'
+                }
+                return demo_result
+            
+            # 2. 계좌 잔고 확인 (API 키 필요)
+            if api_key and secret_key:
+                timestamp = int(time.time() * 1000)
+                params = {'timestamp': timestamp}
+                
+                query_string = urlencode(params)
+                signature = hmac.new(
+                    secret_key.encode('utf-8'),
+                    query_string.encode('utf-8'),
+                    hashlib.sha256
+                ).hexdigest()
+                
+                params['signature'] = signature
+                headers = {'X-MBX-APIKEY': api_key}
+                
+                account_response = requests.get(
+                    f"{base_url}/fapi/v2/account",
+                    params=params,
+                    headers=headers,
+                    timeout=15
+                )
+                
+                if account_response.status_code == 200:
+                    account_data = account_response.json()
+                    
+                    # 활성 포지션 찾기
+                    positions = account_data.get('positions', [])
+                    active_positions = [p for p in positions if float(p['positionAmt']) != 0]
+                    
+                    demo_result['demo_steps']['2_account_check'] = {
+                        'success': True,
+                        'total_balance': float(account_data['totalWalletBalance']),
+                        'available_balance': float(account_data['availableBalance']),
+                        'active_positions': len(active_positions),
+                        'positions_detail': [
+                            {
+                                'symbol': p['symbol'],
+                                'side': 'LONG' if float(p['positionAmt']) > 0 else 'SHORT',
+                                'size': abs(float(p['positionAmt'])),
+                                'entry_price': float(p['entryPrice']),
+                                'pnl': float(p['unrealizedPnl'])
+                            } for p in active_positions
+                        ]
+                    }
+                else:
+                    demo_result['demo_steps']['2_account_check'] = {
+                        'success': False,
+                        'error': f'HTTP {account_response.status_code}'
+                    }
+            else:
+                demo_result['demo_steps']['2_account_check'] = {
+                    'success': False,
+                    'error': 'API keys not configured'
+                }
+            
+            # 3. 주문 유형 및 파라미터 예시
+            long_entry = current_price * 0.999
+            long_stop = current_price * 0.985
+            long_target = current_price * 1.045
+            
+            short_entry = current_price * 1.001
+            short_stop = current_price * 1.015
+            short_target = current_price * 0.955
+            
+            demo_result['demo_steps']['3_order_examples'] = {
+                'current_price': current_price,
+                'long_position': {
+                    'entry_price': round(long_entry, 2),
+                    'stop_loss': round(long_stop, 2),
+                    'take_profit': round(long_target, 2),
+                    'risk_reward': round((long_target - long_entry) / (long_entry - long_stop), 2)
+                },
+                'short_position': {
+                    'entry_price': round(short_entry, 2),
+                    'stop_loss': round(short_stop, 2),
+                    'take_profit': round(short_target, 2),
+                    'risk_reward': round((short_entry - short_target) / (short_stop - short_entry), 2)
+                }
+            }
+            
+            # 4. 포지션 사이즈 계산 (100 USDT 계좌 기준)
+            account_balance = 100.0
+            risk_percent = 0.10  # 10% (소형 계좌)
+            
+            risk_amount = account_balance * risk_percent
+            price_risk = abs(long_entry - long_stop) / long_entry
+            position_value = max(risk_amount / price_risk, 20.0)  # 최소 20 USDT
+            position_size = position_value / long_entry
+            leverage = min(position_value / (account_balance * 0.1), 125)
+            
+            demo_result['demo_steps']['4_position_calculation'] = {
+                'account_balance': account_balance,
+                'risk_percent': risk_percent * 100,
+                'risk_amount': round(risk_amount, 2),
+                'price_risk_percent': round(price_risk * 100, 2),
+                'position_value': round(position_value, 2),
+                'position_size': round(position_size, 4),
+                'leverage': round(leverage, 1),
+                'min_notional_applied': position_value == 20.0
+            }
+            
+            # 5. 실제 주문 파라미터
+            demo_result['demo_steps']['5_order_parameters'] = {
+                'symbol': symbol,
+                'side': 'BUY',
+                'type': 'LIMIT',
+                'timeInForce': 'GTC',
+                'quantity': f"{position_size:.4f}",
+                'price': f"{long_entry:.2f}",
+                'positionSide': 'LONG',
+                'api_endpoint': f"{base_url}/fapi/v1/order"
+            }
+            
+            demo_result['status'] = 'success'
+            demo_result['summary'] = {
+                'price_check': demo_result['demo_steps']['1_price_check']['success'],
+                'account_check': demo_result['demo_steps']['2_account_check']['success'],
+                'ready_for_trading': all([
+                    demo_result['demo_steps']['1_price_check']['success'],
+                    demo_result['demo_steps']['2_account_check']['success']
+                ])
+            }
+            
+            return demo_result
+            
+        except Exception as e:
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'status': 'failed',
+                'error': f'Demo failed: {str(e)}'
             }
     
     def get_welcome_page(self):
