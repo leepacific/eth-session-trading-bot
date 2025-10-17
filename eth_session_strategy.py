@@ -60,11 +60,11 @@ class ETHSessionStrategy:
         self.equity_curve = []
         
         # 고급 리스크 관리자 초기화
+        # 계좌 잔고에 따른 동적 리스크 파라미터
         risk_params = RiskParameters(
             account_balance=initial_balance,
-            max_account_risk_per_trade=0.05,  # 5%
-            liquidation_probability=0.07,     # 7%
-            max_leverage=125
+            min_notional_usdt=20.0  # 바이낸스 최소 주문 금액
+            # 나머지는 __post_init__에서 자동 조정됨
         )
         self.risk_manager = AdvancedRiskManager(risk_params)
         
@@ -436,8 +436,10 @@ class ETHSessionStrategy:
         
             # 현재 계좌 상태 확인
             account_status = self.risk_manager.get_account_status()
-            if account_status['balance'] < 1000:
-                print("⚠️ 계좌 잔고 부족으로 거래 중단")
+            # 최소 주문 금액의 2배 이상 있어야 거래 가능
+            min_balance_required = self.risk_manager.params.min_notional_usdt * 2
+            if account_status['balance'] < min_balance_required:
+                print(f"⚠️ 계좌 잔고 부족으로 거래 중단 (필요: ${min_balance_required}, 현재: ${account_status['balance']:.2f})")
                 break
             entry_idx = signal['index']
             entry_price = signal['entry_price']

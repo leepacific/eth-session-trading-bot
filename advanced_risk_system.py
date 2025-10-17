@@ -13,11 +13,31 @@ import math
 
 @dataclass
 class RiskParameters:
-    """리스크 파라미터"""
+    """리스크 파라미터 (계좌 잔고에 따라 동적 조정)"""
     account_balance: float = 100000  # 계좌 잔고
-    max_account_risk_per_trade: float = 0.05  # 거래당 최대 계좌 리스크 (5%)
-    liquidation_probability: float = 0.07  # 청산 확률 (7%)
-    max_leverage: float = 125  # 바이낸스 최대 레버리지
+    max_account_risk_per_trade: float = 0.05  # 거래당 최대 계좌 리스크
+    liquidation_probability: float = 0.05  # 청산 확률
+    max_leverage: float = 125  # 최대 레버리지
+    min_notional_usdt: float = 20.0  # 바이낸스 최소 주문 금액
+    
+    def __post_init__(self):
+        """계좌 잔고에 따른 동적 리스크 조정"""
+        if self.account_balance >= 1000:
+            # 1000 USDT 이상: 공격적 설정
+            self.liquidation_probability = 0.07  # 7%
+            self.max_account_risk_per_trade = 0.05  # 5%
+            print(f"💰 대형 계좌 모드: 청산확률 7%, 거래당 리스크 5%")
+        else:
+            # 1000 USDT 미만: 보수적 설정 (100 USDT 계좌 대응)
+            self.liquidation_probability = 0.05  # 5%
+            # 최소 주문 금액 비율에 따라 리스크 조정
+            min_order_ratio = self.min_notional_usdt / self.account_balance
+            if min_order_ratio > 0.15:  # 15% 이상
+                self.max_account_risk_per_trade = 0.10  # 10%로 제한 (더 현실적)
+                print(f"🔒 소형 계좌 모드: 청산확률 5%, 거래당 리스크 {self.max_account_risk_per_trade*100:.1f}%")
+            else:
+                self.max_account_risk_per_trade = 0.05  # 5%
+                print(f"⚖️ 중형 계좌 모드: 청산확률 5%, 거래당 리스크 5%")
     maintenance_margin_rate: float = 0.004  # 유지증거금률 (0.4%)
     
 class AdvancedRiskManager:
@@ -33,16 +53,26 @@ class AdvancedRiskManager:
     
     def calculate_optimal_position(self, entry_price: float, stop_price: float, 
                                  atr: float, direction: str) -> dict:
-        """최적 포지션 계산"""
+        """최적 포지션 계산 (최소 주문 금액 고려)"""
         
         # 1. 기본 리스크 계산
         price_risk = abs(entry_price - stop_price) / entry_price
         max_risk_amount = self.params.account_balance * self.params.max_account_risk_per_trade
         
+        # 2. 최소 주문 금액 확인
+        min_position_size = self.params.min_notional_usdt / entry_price
+        min_position_value = min_position_size * entry_price
+        
+        # 최소 주문 금액 정보 출력 (조정하지 않음)
+        min_position_ratio = min_position_value / self.params.account_balance
+        if min_position_ratio > 0.15:  # 15% 이상이면 정보만 출력
+            print(f"ℹ️ 최소 주문 금액: ${min_position_value:.2f} (계좌의 {min_position_ratio*100:.1f}%)")
+            print(f"   백테스팅 결과가 좋으므로 그대로 진행합니다")
+        
         # 2. ATR 기반 변동성 조정
         volatility_multiplier = self._calculate_volatility_multiplier(atr, entry_price)
         
-        # 3. 청산 거리 계산 (7% 확률 기준)
+        # 3. 청산 거리 계산 (5% 확률 기준 - 더 안전)
         liquidation_distance = self._calculate_liquidation_distance(atr, entry_price)
         
         # 4. 최적 레버리지 계산
@@ -54,10 +84,19 @@ class AdvancedRiskManager:
         position_value = max_risk_amount / price_risk
         position_size = position_value / entry_price
         
-        # 6. 실제 증거금 계산
+        # 6. 최소 주문 금액 보장
+        if position_value < self.params.min_notional_usdt:
+            print(f"📈 최소 주문 금액 조정: ${position_value:.2f} → ${self.params.min_notional_usdt}")
+            position_value = self.params.min_notional_usdt
+            position_size = position_value / entry_price
+            # 실제 리스크 재계산
+            actual_risk = position_value * price_risk
+            print(f"   실제 리스크: ${actual_risk:.2f} ({actual_risk/self.params.account_balance*100:.1f}%)")
+        
+        # 7. 실제 증거금 계산
         required_margin = position_value / optimal_leverage
         
-        # 7. 청산 가격 계산
+        # 8. 청산 가격 계산
         liquidation_price = self._calculate_liquidation_price(
             entry_price, optimal_leverage, direction
         )
@@ -89,9 +128,9 @@ class AdvancedRiskManager:
             return 1.2
     
     def _calculate_liquidation_distance(self, atr: float, price: float) -> float:
-        """청산 거리 계산 (7% 확률 기준)"""
-        # 정규분포 가정하에 7% 확률은 약 1.48 표준편차
-        z_score = 1.48
+        """청산 거리 계산 (5% 확률 기준 - 더 안전)"""
+        # 정규분포 가정하에 5% 확률은 약 1.645 표준편차
+        z_score = 1.645
         
         # ATR을 일일 변동성으로 변환 (15분봉 -> 일일)
         daily_volatility = atr * math.sqrt(96)  # 96 = 24시간 / 15분
