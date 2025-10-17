@@ -1,0 +1,30 @@
+
+🔐 바이낸스 API IP 업데이트 가이드
+
+현재 Railway IP: 175.223.10.67
+업데이트 시간: 2025-10-17 17:20:49
+
+📋 수동 업데이트 단계:
+
+1. 바이낸스 API 관리 접속
+   https://www.binance.com/en/my/settings/api-management
+
+2. API 키 편집
+   - 기존 API 키 옆의 'Edit' 버튼 클릭
+   - 보안 인증 완료 (SMS, 이메일, Google Authenticator)
+
+3. IP 제한 업데이트
+   - 'IP Access Restrictions' 섹션에서
+   - 기존 IP 삭제 (있는 경우)
+   - 새 IP 추가: 175.223.10.67
+   - 'Confirm' 버튼 클릭
+
+4. 권한 설정 확인
+   ✅ Enable Reading
+   ✅ Enable Spot & Margin Trading
+   ❌ Enable Withdrawals (보안상 비활성화)
+
+5. 연결 테스트
+   https://eth-trading-bot-production.up.railway.app/test-binance
+
+⚠️ 중요: IP 업데이트 후 5-10분 정도 기다린 후 테스트하세요.

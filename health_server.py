@@ -234,9 +234,103 @@ class HealthHandler(BaseHTTPRequestHandler):
     def run_binance_test(self):
         """바이낸스 연결 테스트 실행"""
         try:
-            from binance_connection_test import BinanceConnectionTester
+            # Cloudflare 프록시 사용 여부 확인
+            use_proxy = os.getenv('USE_CLOUDFLARE_PROXY', 'false').lower() == 'true'
+            proxy_url = os.getenv('BINANCE_PROXY_URL')
             
-            print("🧪 바이낸스 연결 테스트 시작...")
+            if use_proxy and proxy_url:
+                print("🌐 Cloudflare 프록시를 통한 바이낸스 연결 테스트...")
+                return self._test_binance_via_proxy(proxy_url)
+            else:
+                print("🔗 직접 바이낸스 연결 테스트...")
+                return self._test_binance_direct()
+            
+        except Exception as e:
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'error': f'Binance test failed: {str(e)}',
+                'status': 'failed'
+            }
+    
+    def _test_binance_via_proxy(self, proxy_url):
+        """프록시를 통한 바이낸스 테스트"""
+        import requests
+        import hmac
+        import hashlib
+        import time
+        from urllib.parse import urlencode
+        
+        test_results = {}
+        proxy_url = proxy_url.rstrip('/')
+        
+        try:
+            # 1. 서버 시간 테스트
+            response = requests.get(f"{proxy_url}/api/v3/time", timeout=15)
+            test_results['server_time'] = response.status_code == 200
+            
+            # 2. 프록시 헤더 확인
+            proxy_headers = {k: v for k, v in response.headers.items() if 'proxy' in k.lower()}
+            test_results['proxy_headers'] = bool(proxy_headers)
+            
+            # 3. 계정 정보 테스트 (API 키 필요)
+            api_key = os.getenv('BINANCE_API_KEY')
+            secret_key = os.getenv('BINANCE_SECRET_KEY')
+            
+            if api_key and secret_key:
+                timestamp = int(time.time() * 1000)
+                params = {'timestamp': timestamp}
+                
+                query_string = urlencode(params)
+                signature = hmac.new(
+                    secret_key.encode('utf-8'),
+                    query_string.encode('utf-8'),
+                    hashlib.sha256
+                ).hexdigest()
+                
+                params['signature'] = signature
+                headers = {'X-MBX-APIKEY': api_key}
+                
+                response = requests.get(
+                    f"{proxy_url}/api/v3/account",
+                    params=params,
+                    headers=headers,
+                    timeout=15
+                )
+                
+                test_results['account_info'] = response.status_code == 200
+            else:
+                test_results['account_info'] = False
+            
+            # 4. IP 제한 테스트 (간접적)
+            test_results['ip_restrictions'] = test_results['account_info']
+            
+            passed_tests = sum(test_results.values())
+            total_tests = len(test_results)
+            
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'test_results': test_results,
+                'passed_tests': passed_tests,
+                'total_tests': total_tests,
+                'success_rate': passed_tests / total_tests * 100,
+                'status': 'completed',
+                'proxy_url': proxy_url,
+                'proxy_headers': proxy_headers,
+                'note': 'Using Cloudflare Workers proxy'
+            }
+            
+        except Exception as e:
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'error': f'Proxy test failed: {str(e)}',
+                'status': 'failed',
+                'proxy_url': proxy_url
+            }
+    
+    def _test_binance_direct(self):
+        """직접 바이낸스 테스트"""
+        try:
+            from binance_connection_test import BinanceConnectionTester
             
             tester = BinanceConnectionTester()
             
@@ -265,13 +359,13 @@ class HealthHandler(BaseHTTPRequestHandler):
                 'total_tests': total_tests,
                 'success_rate': passed_tests / total_tests * 100,
                 'status': 'completed',
-                'note': 'Order placement test excluded from API endpoint'
+                'note': 'Direct connection to Binance API'
             }
             
         except Exception as e:
             return {
                 'timestamp': datetime.now().isoformat(),
-                'error': f'Binance test failed: {str(e)}',
+                'error': f'Direct test failed: {str(e)}',
                 'status': 'failed'
             }
     

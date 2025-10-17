@@ -1,0 +1,12 @@
+tunnel: 4c87cff7-1a3a-4c49-905b-f1ecd127aa92
+credentials-file: C:\Users\sylio\.cloudflared\4c87cff7-1a3a-4c49-905b-f1ecd127aa92.json
+
+ingress:
+  # 바이낸스 API 프록시
+  - hostname: binance-proxy.leepacific-eth-trading-bot.site
+    service: https://api.binance.com
+    originRequest:
+      httpHostHeader: api.binance.com
+      
+  # 기본 규칙 (필수)
+  - service: http_status:404
