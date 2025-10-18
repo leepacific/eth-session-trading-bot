@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-10-18T13:08:24.828056",
+  "source": "advanced_optimization_20251018_130824",
+  "score": 0.8247480953968642,
+  "notes": "Advanced optimization pipeline with statistical validation",
+  "parameters": {
+    "target_r": 2.088214640922199,
+    "stop_atr_mult": 0.05359377091741667,
+    "swing_len": 3.3045391204572425,
+    "rr_percentile": 0.11035515486486902,
+    "atr_len": 11.523887031055155,
+    "session_strength": 1.0786605148570454,
+    "volume_filter": 1.0611255536361404
+  }
+}
