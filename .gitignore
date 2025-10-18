@@ -69,8 +69,12 @@ debug_*.py
 temp_*.py
 
 # 최적화 결과 (최신 것만 유지)
-optimization_result_*.json
-!optimization_result_latest.json
+results/optimization_result_*.json
+results/backtest_result_*.json
+results/full_backtest_*.json
+results/real_backtest_*.json
+!results/optimization_result_latest.json
+!results/backtest_result_latest.json
 
 # 파라미터 히스토리
 parameters_history.json

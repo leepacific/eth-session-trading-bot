@@ -1,0 +1,143 @@
+{
+  "backtest_info": {
+    "data_points": 206319,
+    "start_date": "2019-11-27 07:45:00",
+    "end_date": "2025-10-15 11:15:00",
+    "parameters": {
+      "target_r": 2.03125,
+      "stop_atr_mult": 0.051250000000000004,
+      "swing_len": 3.1125,
+      "rr_percentile": 0.10375000000000001,
+      "atr_len": 10.5,
+      "session_strength": 1.025,
+      "volume_filter": 1.01875
+    },
+    "timestamp": "2025-10-18T13:19:55.492194"
+  },
+  "performance": {
+    "total_trades": 2527,
+    "win_rate": 0.01147605856747131,
+    "avg_win": 0.00040746768475452864,
+    "avg_loss": 0.0011694008124341873,
+    "profit_factor": 0.004045156648114898,
+    "total_return": -2.9093466666027186,
+    "sharpe_ratio": -51.6807772887047,
+    "sortino_ratio": -59.04802100824516,
+    "calmar_ratio": -1.000432914032618,
+    "max_drawdown": 2.908087714622974,
+    "largest_win": 0.0015319618414104653,
+    "largest_loss": -0.0033238283919196517
+  },
+  "trades": [
+    {
+      "entry_time": "2025-10-09 14:45:00",
+      "exit_time": "2025-10-09 15:00:00",
+      "entry_price": 4343.67,
+      "exit_price": 4345.047892857143,
+      "direction": "short",
+      "pnl_pct": -0.0011419110356343366,
+      "pnl_usd": -1.1419110356343367,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-09 23:15:00",
+      "exit_time": "2025-10-09 23:30:00",
+      "entry_price": 4364.16,
+      "exit_price": 4363.482511607142,
+      "direction": "long",
+      "pnl_pct": -0.0009764038265179005,
+      "pnl_usd": -0.9764038265179005,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-10 10:45:00",
+      "exit_time": "2025-10-10 11:00:00",
+      "entry_price": 4340.59,
+      "exit_price": 4339.834538392857,
+      "direction": "long",
+      "pnl_pct": -0.001328971865715265,
+      "pnl_usd": -1.3289718657152652,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-10 22:15:00",
+      "exit_time": "2025-10-10 22:30:00",
+      "entry_price": 3866.7,
+      "exit_price": 3873.6010687499997,
+      "direction": "short",
+      "pnl_pct": -0.002622823845824176,
+      "pnl_usd": -2.622823845824176,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-11 02:30:00",
+      "exit_time": "2025-10-11 02:45:00",
+      "entry_price": 3855.1,
+      "exit_price": 3852.3251053571425,
+      "direction": "long",
+      "pnl_pct": -0.00179817104799188,
+      "pnl_usd": -1.7981710479918802,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-11 03:15:00",
+      "exit_time": "2025-10-11 03:30:00",
+      "entry_price": 3775.78,
+      "exit_price": 3778.1962910714287,
+      "direction": "short",
+      "pnl_pct": -0.0015241660549063802,
+      "pnl_usd": -1.5241660549063802,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-12 12:45:00",
+      "exit_time": "2025-10-12 13:00:00",
+      "entry_price": 3829.98,
+      "exit_price": 3829.084186607143,
+      "direction": "long",
+      "pnl_pct": -0.0011509814476743751,
+      "pnl_usd": -1.1509814476743752,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-12 23:15:00",
+      "exit_time": "2025-10-12 23:30:00",
+      "entry_price": 4138.92,
+      "exit_price": 4137.220440178571,
+      "direction": "long",
+      "pnl_pct": -0.0012686363185217629,
+      "pnl_usd": -1.2686363185217628,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-13 00:45:00",
+      "exit_time": "2025-10-13 01:00:00",
+      "entry_price": 4136.94,
+      "exit_price": 4135.531869642857,
+      "direction": "long",
+      "pnl_pct": -0.0012942624535395182,
+      "pnl_usd": -1.2942624535395182,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    },
+    {
+      "entry_time": "2025-10-13 09:45:00",
+      "exit_time": "2025-10-13 10:00:00",
+      "entry_price": 4162.29,
+      "exit_price": 4161.199619642857,
+      "direction": "long",
+      "pnl_pct": -0.0011895934566376345,
+      "pnl_usd": -1.1895934566376345,
+      "bars_held": 1,
+      "exit_reason": "stop_loss"
+    }
+  ]
+}

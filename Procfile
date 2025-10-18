@@ -1,3 +1,3 @@
-web: python railway_bot.py
-worker: python railway_bot.py
-scheduler: python auto_optimizer.py
+web: python main.py
+scheduler: python scheduler.py
+optimizer: python run_optimization.py
