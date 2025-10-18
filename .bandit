@@ -1,0 +1,12 @@
+[bandit]
+# Bandit configuration for ETH Trading Bot
+exclude_dirs = tests,__pycache__,.git,.venv,venv,build,dist
+
+# Skip pickle warnings - we use pickle for legitimate data serialization
+skips = B403
+
+# Only report medium and high severity issues
+severity = medium,high
+
+# Confidence levels to report
+confidence = medium,high

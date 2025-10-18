@@ -8,7 +8,10 @@ import requests
 import json
 import os
 import time
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 class BinanceIPManager:
     def __init__(self):
@@ -23,8 +26,8 @@ class BinanceIPManager:
             if response.status_code == 200:
                 ip_data = response.json()
                 return ip_data.get('origin', '').strip()
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Primary IP service failed: {e}")
         
         # 대체 IP 확인 서비스들
         ip_services = [
@@ -40,7 +43,8 @@ class BinanceIPManager:
                 ip = data.get('ip') or data.get('origin')
                 if ip:
                     return ip.strip()
-            except:
+            except Exception as e:
+                logger.debug(f"IP service {service} failed: {e}")
                 continue
         
         return None

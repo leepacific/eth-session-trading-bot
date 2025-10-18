@@ -348,8 +348,8 @@ class LiveTradingBot:
                     symbol=self.symbol,
                     orderId=pos_data['stop_order']['orderId']
                 )
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"Stop order cancellation failed: {e}")
             
             # 활성 포지션에서 제거
             del self.active_positions[pos_id]

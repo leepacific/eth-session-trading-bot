@@ -12,7 +12,10 @@ import os
 import time
 import hmac
 import hashlib
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 from urllib.parse import urlencode
 
 class BinanceIPMonitor:
@@ -46,6 +49,7 @@ class BinanceIPMonitor:
                     return ip.strip()
                     
             except Exception as e:
+                logger.debug(f"IP service failed: {e}")
                 continue
         
         return None

@@ -109,8 +109,8 @@ jobs:
     
     - name: Run Bandit Security Scan
       run: |
-        bandit -r src -f json -o bandit-report.json || true
-        bandit -r src
+        bandit -r src -f json -o bandit-report.json --configfile .bandit || true
+        bandit -r src --configfile .bandit
 
   build-and-deploy:
     runs-on: ubuntu-latest
