@@ -5,6 +5,7 @@
 """
 
 import json
+
 import numpy as np
 import pandas as pd
 from eth_session_strategy import ETHSessionStrategy

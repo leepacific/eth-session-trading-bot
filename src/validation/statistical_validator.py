@@ -7,18 +7,20 @@
 - Top-1~2 시스템 최종 선택
 """
 
+import warnings
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
 from scipy import stats
-import warnings
 
 warnings.filterwarnings("ignore")
 
-from ..core.performance_evaluator import PerformanceEvaluator, PerformanceMetrics
 from montecarlo_simulator import MonteCarloResult
 from walkforward_analyzer import WalkForwardResult
+
+from ..core.performance_evaluator import PerformanceEvaluator, PerformanceMetrics
 
 
 @dataclass
@@ -429,8 +431,8 @@ def main():
     validator = StatisticalValidator(performance_evaluator)
 
     # 가상의 후보 데이터 생성 (실제로는 이전 단계에서 받아옴)
-    from walkforward_analyzer import WalkForwardResult, WalkForwardSlice
     from montecarlo_simulator import MonteCarloResult
+    from walkforward_analyzer import WalkForwardResult, WalkForwardSlice
 
     # 테스트용 가상 데이터
     test_candidates = []

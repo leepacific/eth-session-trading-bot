@@ -7,26 +7,28 @@
 - 리스크 관리 검증 테스트
 """
 
-import unittest
-import time
-import psutil
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
 import gc
 import threading
-from typing import Dict, List, Tuple
+import time
+import unittest
 import warnings
+from datetime import datetime, timedelta
+from typing import Dict, List, Tuple
+
+import numpy as np
+import pandas as pd
+import psutil
 
 warnings.filterwarnings("ignore")
+
+from kelly_position_sizer import KellyPositionSizer
 
 # 성능 테스트할 모듈들 import
 from optimization_pipeline import OptimizationPipeline, PipelineConfig
 from performance_evaluator import PerformanceEvaluator
+from performance_optimizer import PerformanceConfig, PerformanceOptimizer
+from realtime_monitoring_system import MonitoringConfig, RealtimeMonitor
 from statistical_validator import StatisticalValidator
-from kelly_position_sizer import KellyPositionSizer
-from performance_optimizer import PerformanceOptimizer, PerformanceConfig
-from realtime_monitoring_system import RealtimeMonitor, MonitoringConfig
 
 
 class TestOptimizationSpeedBenchmark(unittest.TestCase):

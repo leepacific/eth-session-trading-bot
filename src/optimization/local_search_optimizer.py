@@ -6,14 +6,15 @@
 - Top-12 → Top-5 후보 선별
 """
 
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Tuple, Optional, Callable
-import optuna
-from optuna.samplers import TPESampler
-from optuna.pruners import MedianPruner
 import time
 import warnings
+from typing import Callable, Dict, List, Optional, Tuple
+
+import numpy as np
+import optuna
+import pandas as pd
+from optuna.pruners import MedianPruner
+from optuna.samplers import TPESampler
 
 warnings.filterwarnings("ignore")
 

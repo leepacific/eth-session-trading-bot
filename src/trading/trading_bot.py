@@ -3,15 +3,16 @@ ETH 세션 스윕 전략 실시간 거래 봇
 Railway 배포용 메인 파일
 """
 
+import asyncio
+import logging
 import os
 import time
-import logging
-import asyncio
-import pandas as pd
+import warnings
 from datetime import datetime, timedelta
+
+import pandas as pd
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -20,9 +21,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from advanced_risk_system import AdvancedRiskManager, RiskParameters
+
 # 로컬 모듈 import
 from eth_session_strategy import ETHSessionStrategy
-from advanced_risk_system import AdvancedRiskManager, RiskParameters
 
 # 로깅 설정
 logging.basicConfig(

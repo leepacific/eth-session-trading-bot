@@ -3,16 +3,17 @@
 목표: 100,000개 데이터 포인트 수집
 """
 
-import requests
-import pandas as pd
-import time
-from datetime import datetime, timedelta
-import os
-from dotenv import load_dotenv
-import json
 import hashlib
 import hmac
+import json
+import os
+import time
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
+
+import pandas as pd
+import requests
+from dotenv import load_dotenv
 
 # 환경 변수 로드
 load_dotenv()

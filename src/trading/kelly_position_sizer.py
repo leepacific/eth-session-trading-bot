@@ -7,16 +7,18 @@
 - DD 10%마다 베팅 20% 축소 로직
 """
 
+import warnings
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
-import warnings
 
 warnings.filterwarnings("ignore")
 
+from dd_scaling_system import DDScalingConfig, DDScalingSystem
+
 from ..core.performance_evaluator import PerformanceEvaluator, PerformanceMetrics
-from dd_scaling_system import DDScalingSystem, DDScalingConfig
 
 
 @dataclass

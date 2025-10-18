@@ -7,23 +7,25 @@
 - 포지션 사이징 계산 테스트
 """
 
+import os
+import tempfile
 import unittest
+import warnings
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-import tempfile
-import os
-import warnings
 
 warnings.filterwarnings("ignore")
 
+from dd_scaling_system import DDScalingConfig, DDScalingSystem
+from kelly_position_sizer import KellyParameters, KellyPositionSizer, TradeStatistics
+
 # 테스트할 모듈들 import
 from performance_evaluator import PerformanceEvaluator, PerformanceMetrics
+from performance_optimizer import MemoryManager, PerformanceConfig, PerformanceOptimizer
+from realtime_monitoring_system import MarketData, MonitoringConfig, RealtimeMonitor, TradeEvent
 from statistical_validator import StatisticalValidator
-from kelly_position_sizer import KellyPositionSizer, KellyParameters, TradeStatistics
-from dd_scaling_system import DDScalingSystem, DDScalingConfig
-from realtime_monitoring_system import RealtimeMonitor, MonitoringConfig, MarketData, TradeEvent
-from performance_optimizer import PerformanceOptimizer, PerformanceConfig, MemoryManager
 
 
 class TestPerformanceEvaluator(unittest.TestCase):

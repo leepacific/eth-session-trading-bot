@@ -6,20 +6,21 @@
 - 자동 복구 및 알림 시스템
 """
 
-import time
+import json
 import threading
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable, Any
+import time
+import warnings
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
 import pandas as pd
-import json
-import warnings
 
 warnings.filterwarnings("ignore")
 
-from realtime_monitoring_system import RealtimeMonitor, TradingState, AlertLevel
+from realtime_monitoring_system import AlertLevel, RealtimeMonitor, TradingState
 
 
 class FailureType(Enum):
@@ -567,7 +568,7 @@ def main():
     print("=" * 80)
 
     # 모니터링 시스템과 연동
-    from realtime_monitoring_system import RealtimeMonitor, MonitoringConfig
+    from realtime_monitoring_system import MonitoringConfig, RealtimeMonitor
 
     monitor = RealtimeMonitor(MonitoringConfig())
     monitor.start_monitoring(10000.0)

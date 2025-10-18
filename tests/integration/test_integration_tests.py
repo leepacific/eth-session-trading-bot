@@ -7,26 +7,28 @@
 - 켈리 포지션 사이징 통합 테스트
 """
 
+import os
+import tempfile
+import time
 import unittest
+import warnings
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-import tempfile
-import os
-import time
-import warnings
 
 warnings.filterwarnings("ignore")
+
+from dd_scaling_system import DDScalingSystem
+from failure_recovery_system import FailureRecoveryConfig, FailureRecoverySystem
+from kelly_position_sizer import KellyPositionSizer
 
 # 통합 테스트할 모듈들 import
 from optimization_pipeline import OptimizationPipeline, PipelineConfig, PipelineStatus
 from performance_evaluator import PerformanceEvaluator
+from performance_optimizer import PerformanceConfig, PerformanceOptimizer
+from realtime_monitoring_system import MonitoringConfig, RealtimeMonitor
 from statistical_validator import StatisticalValidator
-from kelly_position_sizer import KellyPositionSizer
-from dd_scaling_system import DDScalingSystem
-from realtime_monitoring_system import RealtimeMonitor, MonitoringConfig
-from failure_recovery_system import FailureRecoverySystem, FailureRecoveryConfig
-from performance_optimizer import PerformanceOptimizer, PerformanceConfig
 
 
 class TestOptimizationPipelineIntegration(unittest.TestCase):
