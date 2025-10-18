@@ -378,16 +378,21 @@ class FastDataEngine:
     
     def _parallel_backtest_ray(self, param_sets: List[Dict], strategy_func) -> List[Dict]:
         """Ray를 사용한 병렬 백테스트"""
-        @ray.remote
-        def remote_backtest(params):
-            return strategy_func(params)
-        
-        # Ray 작업 제출
-        futures = [remote_backtest.remote(params) for params in param_sets]
-        
-        # 결과 수집
-        results = ray.get(futures)
-        return results
+        try:
+            import ray
+            @ray.remote
+            def remote_backtest(params):
+                return strategy_func(params)
+            
+            # Ray 작업 제출
+            futures = [remote_backtest.remote(params) for params in param_sets]
+            
+            # 결과 수집
+            results = ray.get(futures)
+            return results
+        except ImportError:
+            # Ray가 없으면 단일 스레드로 폴백
+            return [strategy_func(params) for params in param_sets]
     
     def _parallel_backtest_joblib(self, param_sets: List[Dict], 
                                 strategy_func, n_jobs: int) -> List[Dict]:
