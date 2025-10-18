@@ -9,7 +9,4 @@ from .walkforward_analyzer import WalkforwardAnalyzer
 from .montecarlo_simulator import MonteCarloSimulator
 from .performance_validation import PerformanceValidator
 
-__all__ = [
-    'StatisticalValidator', 'TimeseriesValidator',
-    'WalkforwardAnalyzer', 'MonteCarloSimulator', 'PerformanceValidator'
-]
+__all__ = ["StatisticalValidator", "TimeseriesValidator", "WalkforwardAnalyzer", "MonteCarloSimulator", "PerformanceValidator"]

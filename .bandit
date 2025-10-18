@@ -1,4 +1,16 @@
-exclude_dirs: tests,__pycache__,.git,.venv,venv,build,dist
-skips: [B403]
-severity: medium,high
-confidence: medium,high
+exclude_dirs: 
+  - tests
+  - __pycache__
+  - .git
+  - .venv
+  - venv
+  - build
+  - dist
+skips: 
+  - B403
+severity: 
+  - medium
+  - high
+confidence: 
+  - medium
+  - high

@@ -7,4 +7,4 @@ from .performance_optimizer import PerformanceOptimizer
 from .advanced_risk_system import AdvancedRiskManager
 from .fixed_risk_management import FixedRiskManager
 
-__all__ = ['PerformanceOptimizer', 'AdvancedRiskManager', 'FixedRiskManager']
+__all__ = ["PerformanceOptimizer", "AdvancedRiskManager", "FixedRiskManager"]
